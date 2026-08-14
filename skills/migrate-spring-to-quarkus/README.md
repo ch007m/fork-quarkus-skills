@@ -16,8 +16,8 @@ The skill will analyze your project, ask you to choose a strategy, and execute t
 
 | Strategy | What it does | Best for |
 |---|---|---|
-| **Spring compatibility** (`spring-compat`) | Uses `quarkus-spring-web`, `quarkus-spring-data-jpa`, `quarkus-spring-di`, etc. Minimal code changes. | Teams wanting a low-risk first step, or large codebases where a full rewrite isn't practical yet |
-| **Full Quarkus** (`full-quarkus`) | Replaces all Spring annotations with JAX-RS, CDI, and Panache. Full Quarkus experience. | New projects, small-to-medium apps, or teams ready to fully adopt Quarkus |
+| **Spring compatibility** (`spring-compat`) | Uses `quarkus-spring-web`, `quarkus-spring-data-jpa`, `quarkus-spring-di`, etc. Minimal code changes. | Teams wanting a low-risk first step, reusing their existing Spring code or large codebases where a full migration isn't practical yet |
+| **Full Quarkus** (`full-quarkus`) | Replaces all Spring annotations with JAX-RS, CDI, Hibernate ORM, and Panache. Full Quarkus experience. | New projects, small-to-medium apps, or teams ready to fully adopt Quarkus |
 
 ## Configuration
 
@@ -27,7 +27,7 @@ If you run the skill without any configuration, it will ask you to choose a stra
 
 ### Project config file
 
-Add a `.quarkus-migration.yml` file to your project root to pre-configure the migration:
+Add a `.quarkus-migration.yml` file to your project root to prepare the migration:
 
 ```yaml
 # .quarkus-migration.yml
