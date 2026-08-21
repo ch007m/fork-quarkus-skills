@@ -1,5 +1,7 @@
 package io.quarkus.migration;
 
+import io.quarkus.migration.runner.AgentRunner;
+
 import java.time.Duration;
 import java.time.Instant;
 import java.util.LinkedHashMap;
@@ -36,6 +38,7 @@ public class MigrationResult {
     private String userProvider;
     private String userModel;
     private String projectType;
+    private List<AgentRunner.ModelUsage> modelUsages = List.of();
 
     public MigrationResult(String agent, String project, String model, String strategy, SkillReference skillRef) {
         this.agent = agent;
@@ -135,6 +138,9 @@ public class MigrationResult {
 
     public String getProjectType() { return projectType; }
     public void setProjectType(String projectType) { this.projectType = projectType; }
+
+    public List<AgentRunner.ModelUsage> getModelUsages() { return modelUsages; }
+    public void setModelUsages(List<AgentRunner.ModelUsage> modelUsages) { this.modelUsages = modelUsages; }
 
     public String getAgent() { return agent; }
     public String getProject() { return project; }

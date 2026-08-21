@@ -150,16 +150,35 @@ public class ResultsTracker {
 
         // Token Usage
         sb.append("## Token Usage\n\n");
-        sb.append("| Metric | Value |\n");
-        sb.append("| --- | --- |\n");
-        sb.append("| Model | `%s` |\n".formatted(result.getModel()));
-        sb.append("| Input tokens | %s |\n".formatted(formatTokens(result.getInputTokens())));
-        sb.append("| Output tokens | %s |\n".formatted(formatTokens(result.getOutputTokens())));
-        sb.append("| Cache read | %s |\n".formatted(formatTokens(result.getCacheRead())));
-        sb.append("| Cache write | %s |\n".formatted(formatTokens(result.getCacheWrite())));
-        sb.append("| Total tokens | %s |\n".formatted(formatTokens(result.getTotalTokens())));
-        sb.append("| Cost | $%.2f |\n".formatted(result.getTotalCost()));
-        sb.append("\n");
+        var modelUsages = result.getModelUsages();
+        if (modelUsages != null && !modelUsages.isEmpty()) {
+            sb.append("| Model | Input | Output | Cache Read | Cache Write | Cost |\n");
+            sb.append("|---|---|---|---|---|---|\n");
+            for (var mu : modelUsages) {
+                sb.append("| %s | %s | %s | %s | %s | $%.4f |\n".formatted(
+                        mu.model(),
+                        formatTokens(mu.inputTokens()), formatTokens(mu.outputTokens()),
+                        formatTokens(mu.cacheRead()), formatTokens(mu.cacheWrite()),
+                        mu.cost()));
+            }
+            sb.append("| **Total** | **%s** | **%s** | **%s** | **%s** | **$%.2f** |\n".formatted(
+                    formatTokens(result.getInputTokens()), formatTokens(result.getOutputTokens()),
+                    formatTokens(result.getCacheRead()), formatTokens(result.getCacheWrite()),
+                    result.getTotalCost()));
+            sb.append("\n");
+            sb.append("Total tokens: %s\n\n".formatted(formatTokens(result.getTotalTokens())));
+        } else {
+            sb.append("| Metric | Value |\n");
+            sb.append("| --- | --- |\n");
+            sb.append("| Model | `%s` |\n".formatted(result.getModel()));
+            sb.append("| Input tokens | %s |\n".formatted(formatTokens(result.getInputTokens())));
+            sb.append("| Output tokens | %s |\n".formatted(formatTokens(result.getOutputTokens())));
+            sb.append("| Cache read | %s |\n".formatted(formatTokens(result.getCacheRead())));
+            sb.append("| Cache write | %s |\n".formatted(formatTokens(result.getCacheWrite())));
+            sb.append("| Total tokens | %s |\n".formatted(formatTokens(result.getTotalTokens())));
+            sb.append("| Cost | $%.2f |\n".formatted(result.getTotalCost()));
+            sb.append("\n");
+        }
 
         // Checks
         if (!result.getChecks().isEmpty()) {

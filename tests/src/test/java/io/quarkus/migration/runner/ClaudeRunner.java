@@ -208,6 +208,7 @@ public class ClaudeRunner extends AbstractRunner implements AgentRunner {
         double totalCost = 0.0;
         int apiCalls = 0;
         String actualModel = model != null ? model : "unknown";
+        List<ModelUsage> perModelUsages = new ArrayList<>();
 
         for (String sessionFile : sessionFiles) {
             if (sessionFile == null)
@@ -229,14 +230,22 @@ public class ClaudeRunner extends AbstractRunner implements AgentRunner {
                                 outputTotal = 0;
                                 cacheReadTotal = 0;
                                 cacheWriteTotal = 0;
+                                perModelUsages = new ArrayList<>();
                                 var fields = modelUsage.fields();
                                 while (fields.hasNext()) {
                                     var entry = fields.next();
                                     JsonNode mu = entry.getValue();
-                                    inputTotal += mu.path("inputTokens").asLong(0);
-                                    outputTotal += mu.path("outputTokens").asLong(0);
-                                    cacheReadTotal += mu.path("cacheReadInputTokens").asLong(0);
-                                    cacheWriteTotal += mu.path("cacheCreationInputTokens").asLong(0);
+                                    long muIn = mu.path("inputTokens").asLong(0);
+                                    long muOut = mu.path("outputTokens").asLong(0);
+                                    long muCR = mu.path("cacheReadInputTokens").asLong(0);
+                                    long muCW = mu.path("cacheCreationInputTokens").asLong(0);
+                                    double muCost = mu.path("costUSD").asDouble(0);
+                                    inputTotal += muIn;
+                                    outputTotal += muOut;
+                                    cacheReadTotal += muCR;
+                                    cacheWriteTotal += muCW;
+                                    perModelUsages.add(new ModelUsage(
+                                            entry.getKey(), muIn, muOut, muCR, muCW, muCost));
                                 }
                             } else {
                                 JsonNode usage = event.path("usage");
@@ -262,7 +271,7 @@ public class ClaudeRunner extends AbstractRunner implements AgentRunner {
 
         long totalTokens = inputTotal + outputTotal + cacheReadTotal + cacheWriteTotal;
         return new UsageStats(totalTokens, totalCost, apiCalls, actualModel,
-                inputTotal, outputTotal, cacheReadTotal, cacheWriteTotal);
+                inputTotal, outputTotal, cacheReadTotal, cacheWriteTotal, perModelUsages);
     }
 
     @Override

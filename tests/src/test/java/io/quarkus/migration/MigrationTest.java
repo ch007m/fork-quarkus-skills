@@ -325,6 +325,7 @@ class MigrationTest {
                 result.setOutputTokens(usage.outputTokens());
                 result.setCacheRead(usage.cacheRead());
                 result.setCacheWrite(usage.cacheWrite());
+                result.setModelUsages(usage.modelUsages());
 
                 // 4. Run checks
                 List<String> failures = new ArrayList<>();
