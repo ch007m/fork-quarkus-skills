@@ -21,6 +21,10 @@ public class MigrationResult {
     private long totalTokens;
     private double totalCost;
     private int apiCalls;
+    private long inputTokens;
+    private long outputTokens;
+    private long cacheRead;
+    private long cacheWrite;
     private List<String> sessionFiles;
     private String workDir;
     private String runName;
@@ -28,6 +32,10 @@ public class MigrationResult {
     private String review;
     private long reviewTokens;
     private double reviewCost;
+    private String prompt;
+    private String userProvider;
+    private String userModel;
+    private String projectType;
 
     public MigrationResult(String agent, String project, String model, String strategy, SkillReference skillRef) {
         this.agent = agent;
@@ -83,6 +91,18 @@ public class MigrationResult {
     public int getApiCalls() { return apiCalls; }
     public void setApiCalls(int apiCalls) { this.apiCalls = apiCalls; }
 
+    public long getInputTokens() { return inputTokens; }
+    public void setInputTokens(long inputTokens) { this.inputTokens = inputTokens; }
+
+    public long getOutputTokens() { return outputTokens; }
+    public void setOutputTokens(long outputTokens) { this.outputTokens = outputTokens; }
+
+    public long getCacheRead() { return cacheRead; }
+    public void setCacheRead(long cacheRead) { this.cacheRead = cacheRead; }
+
+    public long getCacheWrite() { return cacheWrite; }
+    public void setCacheWrite(long cacheWrite) { this.cacheWrite = cacheWrite; }
+
     public List<String> getSessionFiles() { return sessionFiles; }
     public void setSessionFiles(List<String> sessionFiles) { this.sessionFiles = sessionFiles; }
 
@@ -104,6 +124,19 @@ public class MigrationResult {
     public double getReviewCost() { return reviewCost; }
     public void setReviewCost(double reviewCost) { this.reviewCost = reviewCost; }
 
+    public String getPrompt() { return prompt; }
+    public void setPrompt(String prompt) { this.prompt = prompt; }
+
+    public String getUserProvider() { return userProvider; }
+    public void setUserProvider(String userProvider) { this.userProvider = userProvider; }
+
+    public String getUserModel() { return userModel; }
+    public void setUserModel(String userModel) { this.userModel = userModel; }
+
+    public String getProjectType() { return projectType; }
+    public void setProjectType(String projectType) { this.projectType = projectType; }
+
+    public String getAgent() { return agent; }
     public String getProject() { return project; }
     public String getModel() { return model; }
     public String getStrategy() { return strategy; }

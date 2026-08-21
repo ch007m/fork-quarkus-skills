@@ -16,6 +16,11 @@ public interface AgentRunner {
                         Map<String, Boolean> checkResults) throws IOException, InterruptedException;
 
     record RunOutput(int exitCode, Duration duration, List<String> sessionFiles, String logFile) {}
-    record UsageStats(long totalTokens, double totalCost, int apiCalls, String actualModel) {}
+    record UsageStats(long totalTokens, double totalCost, int apiCalls, String actualModel,
+                      long inputTokens, long outputTokens, long cacheRead, long cacheWrite) {
+        UsageStats(long totalTokens, double totalCost, int apiCalls, String actualModel) {
+            this(totalTokens, totalCost, apiCalls, actualModel, 0, 0, 0, 0);
+        }
+    }
     record ReviewOutput(String review, UsageStats usage) {}
 }
