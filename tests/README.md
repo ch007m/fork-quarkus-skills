@@ -364,7 +364,7 @@ Results are appended to `target/runs/history.jsonl` — one JSON line per run:
   "strategy": "full",
   "skill": "spring-boot-to-quarkus",
   "duration_seconds": 196,
-  "usage": {"total_tokens": 321222, "total_cost": 0.3216, "api_calls": 22},
+  "usage": {"total_tokens": 321222, "total_cost": 0.3216, "api_calls": 22, "tool_calls": 78},
   "checks": {"builds": true, "tests-pass": true, "no-spring-deps": true, "has-quarkus": true, "starts-up": true},
   "score": "5/5",
   "review": {"tokens": 376929, "cost": 0.466, "summary": "The skill performed well..."}

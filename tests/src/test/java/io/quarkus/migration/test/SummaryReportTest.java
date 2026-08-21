@@ -177,6 +177,7 @@ class SummaryReportTest {
         assertEquals(45_924, stats1.totalTokens(), "fixture1 totalTokens");
         assertEquals(0.15, stats1.totalCost(), 0.001, "fixture1 cost");
         assertEquals(3, stats1.apiCalls(), "fixture1 apiCalls");
+        assertEquals(1, stats1.toolCalls(), "fixture1 toolCalls");
         assertEquals(2, stats1.modelUsages().size(), "fixture1 model count");
 
         // Extract from fixture 2 (skill B — expensive)
@@ -189,6 +190,7 @@ class SummaryReportTest {
         assertEquals(91_652, stats2.totalTokens(), "fixture2 totalTokens");
         assertEquals(0.30, stats2.totalCost(), 0.001, "fixture2 cost");
         assertEquals(4, stats2.apiCalls(), "fixture2 apiCalls");
+        assertEquals(2, stats2.toolCalls(), "fixture2 toolCalls");
         assertEquals(2, stats2.modelUsages().size(), "fixture2 model count");
 
         // Build MigrationResults for two different skills
@@ -272,6 +274,7 @@ class SummaryReportTest {
         result.setOutputTokens(515);
         result.setCacheRead(48_661);
         result.setCacheWrite(25_246);
+        result.setToolCalls(2);
         return result;
     }
 
@@ -283,6 +286,7 @@ class SummaryReportTest {
         r.setDuration(duration);
         r.setTotalTokens(stats.totalTokens());
         r.setTotalCost(stats.totalCost());
+        r.setToolCalls(stats.toolCalls());
         r.setInputTokens(stats.inputTokens());
         r.setOutputTokens(stats.outputTokens());
         r.setCacheRead(stats.cacheRead());

@@ -18,15 +18,19 @@ public interface AgentRunner {
     record RunOutput(int exitCode, Duration duration, List<String> sessionFiles, String logFile) {}
     record ModelUsage(String model, long inputTokens, long outputTokens,
                       long cacheRead, long cacheWrite, double cost) {}
-    record UsageStats(long totalTokens, double totalCost, int apiCalls, String actualModel,
+    record UsageStats(long totalTokens, double totalCost, int apiCalls, int toolCalls,
+                      String actualModel,
                       long inputTokens, long outputTokens, long cacheRead, long cacheWrite,
                       List<ModelUsage> modelUsages) {
         UsageStats(long totalTokens, double totalCost, int apiCalls, String actualModel) {
-            this(totalTokens, totalCost, apiCalls, actualModel, 0, 0, 0, 0, List.of());
+            this(totalTokens, totalCost, apiCalls, 0, actualModel, 0, 0, 0, 0, List.of());
+        }
+        UsageStats(long totalTokens, double totalCost, int apiCalls, int toolCalls, String actualModel) {
+            this(totalTokens, totalCost, apiCalls, toolCalls, actualModel, 0, 0, 0, 0, List.of());
         }
         UsageStats(long totalTokens, double totalCost, int apiCalls, String actualModel,
                    long inputTokens, long outputTokens, long cacheRead, long cacheWrite) {
-            this(totalTokens, totalCost, apiCalls, actualModel,
+            this(totalTokens, totalCost, apiCalls, 0, actualModel,
                     inputTokens, outputTokens, cacheRead, cacheWrite, List.of());
         }
     }

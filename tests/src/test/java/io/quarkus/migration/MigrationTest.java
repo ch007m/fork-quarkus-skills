@@ -321,6 +321,7 @@ class MigrationTest {
                 result.setTotalTokens(usage.totalTokens());
                 result.setTotalCost(usage.totalCost());
                 result.setApiCalls(usage.apiCalls());
+                result.setToolCalls(usage.toolCalls());
                 result.setInputTokens(usage.inputTokens());
                 result.setOutputTokens(usage.outputTokens());
                 result.setCacheRead(usage.cacheRead());

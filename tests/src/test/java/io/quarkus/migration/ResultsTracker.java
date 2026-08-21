@@ -60,6 +60,7 @@ public class ResultsTracker {
         usage.put("total_tokens", result.getTotalTokens());
         usage.put("total_cost", result.getTotalCost());
         usage.put("api_calls", result.getApiCalls());
+        usage.put("tool_calls", result.getToolCalls());
 
         ObjectNode checks = node.putObject("checks");
         result.getChecks().forEach(checks::put);
@@ -146,6 +147,7 @@ public class ResultsTracker {
         sb.append("| Title | `%s` |\n".formatted(runName));
         sb.append("| Date | %s |\n".formatted(date));
         sb.append("| Duration | %dm %ds (%ds) |\n".formatted(durationMin, durationSec, durationSecs));
+        sb.append("| Tool calls | %d |\n".formatted(result.getToolCalls()));
         sb.append("\n");
 
         // Token Usage
@@ -231,6 +233,7 @@ public class ResultsTracker {
         int n = results.size();
 
         double[] durations = results.stream().mapToDouble(r -> r.getDuration().toSeconds()).toArray();
+        double[] tools = results.stream().mapToDouble(MigrationResult::getToolCalls).toArray();
         double[] inputs = results.stream().mapToDouble(MigrationResult::getInputTokens).toArray();
         double[] outputs = results.stream().mapToDouble(MigrationResult::getOutputTokens).toArray();
         double[] cacheReads = results.stream().mapToDouble(MigrationResult::getCacheRead).toArray();
@@ -252,15 +255,16 @@ public class ResultsTracker {
         sb.append("## Results\n\n");
         sb.append("| SKILL | ");
         if (isSpringMigration) sb.append("Spring Compatibility ? | ");
-        sb.append("Agent | Duration | Input | Output | Cache Read | Cache Write | Total Tokens | Cost | $/MTok |\n");
+        sb.append("Agent | Duration | Tool calls | Input | Output | Cache Read | Cache Write | Total Tokens | Cost | $/MTok |\n");
         sb.append("|---|");
         if (isSpringMigration) sb.append("---|");
-        sb.append("---|---|---|---|---|---|---|---|---|\n");
+        sb.append("---|---|---|---|---|---|---|---|---|---|\n");
 
         sb.append("| **%s** ".formatted(project));
         if (isSpringMigration) sb.append("| **%s** ".formatted(strategy));
         sb.append("| **%s** ".formatted(agent));
         sb.append("| **%s** ".formatted(formatDurationWithStddev(durations)));
+        sb.append("| **%s** ".formatted(formatIntWithStddev(tools)));
         sb.append("| **%s** ".formatted(formatTokensWithStddev(inputs)));
         sb.append("| **%s** ".formatted(formatTokensWithStddev(outputs)));
         sb.append("| **%s** ".formatted(formatTokensWithStddev(cacheReads)));
@@ -277,6 +281,7 @@ public class ResultsTracker {
             if (isSpringMigration) sb.append("| %s ".formatted(strategy));
             sb.append("| %s ".formatted(agent));
             sb.append("| %dm %ds ".formatted(dSecs / 60, dSecs % 60));
+            sb.append("| %d ".formatted(r.getToolCalls()));
             sb.append("| %s ".formatted(formatTokens(r.getInputTokens())));
             sb.append("| %s ".formatted(formatTokens(r.getOutputTokens())));
             sb.append("| %s ".formatted(formatTokens(r.getCacheRead())));
@@ -321,6 +326,12 @@ public class ResultsTracker {
         return "%dm %ds (+/- %ds)".formatted(avgSecs / 60, avgSecs % 60, sdSecs);
     }
 
+    private static String formatIntWithStddev(double[] values) {
+        double avg = mean(values);
+        double sd = stddev(values);
+        return "%d (+/- %d)".formatted(Math.round(avg), Math.round(sd));
+    }
+
     private static String formatTokensWithStddev(double[] values) {
         double avg = mean(values);
         double sd = stddev(values);
@@ -354,8 +365,8 @@ private static String formatTokens(long n) {
         sb.append("# Report benchmark and comparison: %s\n\n".formatted(titleSkills));
 
         sb.append("## Global Summary\n\n");
-        sb.append("| Skill | Runs | Avg Duration | Avg Input | Avg Output | Avg Cache Read | Avg Cache Write | Avg Total Tokens | Avg Cost | Avg $/MTok |\n");
-        sb.append("|---|---|---|---|---|---|---|---|---|---|\n");
+        sb.append("| Skill | Runs | Avg Duration | Avg Tool calls | Avg Input | Avg Output | Avg Cache Read | Avg Cache Write | Avg Total Tokens | Avg Cost | Avg $/MTok |\n");
+        sb.append("|---|---|---|---|---|---|---|---|---|---|---|\n");
 
         var skillAvgs = new ArrayList<double[]>();
 
@@ -365,6 +376,7 @@ private static String formatTokens(long n) {
             int runs = results.size();
 
             double[] durations = results.stream().mapToDouble(r -> r.getDuration().toSeconds()).toArray();
+            double[] gTools = results.stream().mapToDouble(MigrationResult::getToolCalls).toArray();
             double[] inputs = results.stream().mapToDouble(MigrationResult::getInputTokens).toArray();
             double[] outputs = results.stream().mapToDouble(MigrationResult::getOutputTokens).toArray();
             double[] cacheReads = results.stream().mapToDouble(MigrationResult::getCacheRead).toArray();
@@ -374,16 +386,17 @@ private static String formatTokens(long n) {
             double[] gRates = results.stream().mapToDouble(r ->
                     r.getTotalTokens() > 0 ? r.getTotalCost() / r.getTotalTokens() * 1_000_000 : 0).toArray();
 
-            sb.append("| %s | %d | %s | %s | %s | %s | %s | %s | %s | %s |\n".formatted(
+            sb.append("| %s | %d | %s | %s | %s | %s | %s | %s | %s | %s | %s |\n".formatted(
                     skillName, runs,
                     formatDurationWithStddev(durations),
+                    formatIntWithStddev(gTools),
                     formatTokensWithStddev(inputs), formatTokensWithStddev(outputs),
                     formatTokensWithStddev(cacheReads), formatTokensWithStddev(cacheWrites),
                     formatTokensWithStddev(totals), formatCostWithStddev(costs),
                     formatRateWithStddev(gRates)));
 
             skillAvgs.add(new double[]{
-                    mean(durations), mean(inputs), mean(outputs),
+                    mean(durations), mean(gTools), mean(inputs), mean(outputs),
                     mean(cacheReads), mean(cacheWrites), mean(totals), mean(costs),
                     mean(gRates)
             });

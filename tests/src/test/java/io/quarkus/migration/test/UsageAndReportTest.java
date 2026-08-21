@@ -43,6 +43,7 @@ class UsageAndReportTest {
             + EXPECTED_CACHE_READ + EXPECTED_CACHE_WRITE;
     private static final double EXPECTED_COST = 0.195412;
     private static final int EXPECTED_API_CALLS = 5;
+    private static final int EXPECTED_TOOL_CALLS = 2;
 
     @TempDir
     Path tempDir;
@@ -84,6 +85,8 @@ class UsageAndReportTest {
                 "cost from total_cost_usd field");
         assertEquals(EXPECTED_API_CALLS, stats.apiCalls(),
                 "api calls = number of 'assistant' type events");
+        assertEquals(EXPECTED_TOOL_CALLS, stats.toolCalls(),
+                "tool calls = number of 'tool_use' blocks in assistant events");
 
         // Per-model breakdown
         assertFalse(stats.modelUsages().isEmpty(), "modelUsages should be populated");
@@ -194,6 +197,7 @@ class UsageAndReportTest {
         String report = Files.readString(tempDir.resolve("test-run.report.md"));
 
         assertContains(report, "# Migration Run Report");
+        assertContains(report, "| Tool calls | 2 |");
         assertContains(report, "| Input tokens | 819 |");
         assertContains(report, "| Output tokens | 515 |");
         assertContains(report, "| Cache read | 48,661 |");
@@ -300,6 +304,7 @@ class UsageAndReportTest {
         result.setTotalTokens(stats.totalTokens());
         result.setTotalCost(stats.totalCost());
         result.setApiCalls(stats.apiCalls());
+        result.setToolCalls(stats.toolCalls());
         result.setInputTokens(stats.inputTokens());
         result.setOutputTokens(stats.outputTokens());
         result.setCacheRead(stats.cacheRead());
@@ -322,6 +327,7 @@ class UsageAndReportTest {
 
         // Run info
         assertContains(report, "| Duration | 0m 28s (28s) |");
+        assertContains(report, "| Tool calls | 2 |");
         assertContains(report, "-Dai.prompt=\"Say Hello.\"");
         assertContains(report, "-Dai.cmd=claude");
     }
@@ -360,6 +366,7 @@ class UsageAndReportTest {
         result.setTotalTokens(EXPECTED_TOTAL_TOKENS);
         result.setTotalCost(EXPECTED_COST);
         result.setApiCalls(EXPECTED_API_CALLS);
+        result.setToolCalls(EXPECTED_TOOL_CALLS);
         result.setInputTokens(EXPECTED_INPUT_TOKENS);
         result.setOutputTokens(EXPECTED_OUTPUT_TOKENS);
         result.setCacheRead(EXPECTED_CACHE_READ);

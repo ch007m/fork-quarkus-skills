@@ -23,6 +23,7 @@ public class MigrationResult {
     private long totalTokens;
     private double totalCost;
     private int apiCalls;
+    private int toolCalls;
     private long inputTokens;
     private long outputTokens;
     private long cacheRead;
@@ -93,6 +94,9 @@ public class MigrationResult {
 
     public int getApiCalls() { return apiCalls; }
     public void setApiCalls(int apiCalls) { this.apiCalls = apiCalls; }
+
+    public int getToolCalls() { return toolCalls; }
+    public void setToolCalls(int toolCalls) { this.toolCalls = toolCalls; }
 
     public long getInputTokens() { return inputTokens; }
     public void setInputTokens(long inputTokens) { this.inputTokens = inputTokens; }
@@ -166,6 +170,7 @@ public class MigrationResult {
         sb.append("  tokens:   %d\n".formatted(totalTokens));
         sb.append("  cost:     $%.4f\n".formatted(totalCost));
         sb.append("  calls:    %d\n".formatted(apiCalls));
+        sb.append("  tools:    %d\n".formatted(toolCalls));
         sb.append("  checks:\n");
         checks.forEach((k, v) -> sb.append("    %s %s\n".formatted(v ? "✅" : "❌", k)));
         sb.append("  workdir:  %s\n".formatted(workDir));

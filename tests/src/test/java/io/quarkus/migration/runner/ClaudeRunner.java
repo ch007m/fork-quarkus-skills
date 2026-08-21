@@ -207,6 +207,7 @@ public class ClaudeRunner extends AbstractRunner implements AgentRunner {
         long inputTotal = 0, outputTotal = 0, cacheReadTotal = 0, cacheWriteTotal = 0;
         double totalCost = 0.0;
         int apiCalls = 0;
+        int toolCalls = 0;
         String actualModel = model != null ? model : "unknown";
         List<ModelUsage> perModelUsages = new ArrayList<>();
 
@@ -222,6 +223,14 @@ public class ClaudeRunner extends AbstractRunner implements AgentRunner {
 
                         if ("assistant".equals(type)) {
                             apiCalls++;
+                            JsonNode content = event.path("message").path("content");
+                            if (content.isArray()) {
+                                for (JsonNode block : content) {
+                                    if ("tool_use".equals(block.path("type").asText(""))) {
+                                        toolCalls++;
+                                    }
+                                }
+                            }
                         } else if ("result".equals(type)) {
                             // Sum across all models in modelUsage for accurate totals
                             JsonNode modelUsage = event.path("modelUsage");
@@ -270,7 +279,7 @@ public class ClaudeRunner extends AbstractRunner implements AgentRunner {
         }
 
         long totalTokens = inputTotal + outputTotal + cacheReadTotal + cacheWriteTotal;
-        return new UsageStats(totalTokens, totalCost, apiCalls, actualModel,
+        return new UsageStats(totalTokens, totalCost, apiCalls, toolCalls, actualModel,
                 inputTotal, outputTotal, cacheReadTotal, cacheWriteTotal, perModelUsages);
     }
 
