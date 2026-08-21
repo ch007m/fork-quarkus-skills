@@ -346,14 +346,17 @@ class MigrationTest {
                 }
 
                 // 5. Run skill review (separate ai session)
-                if (aiReview() && hasChecks) {
+                if (aiReview() && hasChecks && !output.sessionFiles().isEmpty()) {
                     AgentRunner.ReviewOutput reviewOutput = runner.review(
                             output.sessionFiles().getFirst(), workDir, outputDir, runName, skillPath, result.getChecks());
                     result.setReview(reviewOutput.review());
                     result.setReviewTokens(reviewOutput.usage().totalTokens());
                     result.setReviewCost(reviewOutput.usage().totalCost());
                 } else {
-                    System.out.println("  Skipping skill review" + (!aiReview() ? " (ai.review=false)" : " (no checks defined)"));
+                    String reason = !aiReview() ? " (ai.review=false)"
+                            : output.sessionFiles().isEmpty() ? " (no session files exported)"
+                            : " (no checks defined)";
+                    System.out.println("  Skipping skill review" + reason);
                 }
 
                 // 6. Record result
