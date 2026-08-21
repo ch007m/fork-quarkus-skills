@@ -128,7 +128,7 @@ Remote clones are cached in `target/skills/` (or within the AI agent recommended
 
 ### Examples
 
-Here are some examples that we currently use for local tests with Google Vertex AI combining the system propserties and environment variables
+Here are some examples that we currently use for local tests with Google Vertex AI combining the system properties and environment variables
 
 1. Dummy project
 
