@@ -152,21 +152,34 @@ public class ResultsTracker {
         sb.append("## Token Usage\n\n");
         var modelUsages = result.getModelUsages();
         if (modelUsages != null && !modelUsages.isEmpty()) {
-            sb.append("| Model | Input | Output | Cache Read | Cache Write | Cost |\n");
-            sb.append("|---|---|---|---|---|---|\n");
+            sb.append("| Model | Input | Output | Cache Read | Cache Write | Cost | $/MTok |\n");
+            sb.append("|---|---|---|---|---|---|---|\n");
             for (var mu : modelUsages) {
-                sb.append("| %s | %s | %s | %s | %s | $%.4f |\n".formatted(
+                long muTotal = mu.inputTokens() + mu.outputTokens() + mu.cacheRead() + mu.cacheWrite();
+                String rateStr = muTotal > 0
+                        ? "$%.2f".formatted(mu.cost() / muTotal * 1_000_000)
+                        : "—";
+                sb.append("| %s | %s | %s | %s | %s | $%.4f | %s |\n".formatted(
                         mu.model(),
                         formatTokens(mu.inputTokens()), formatTokens(mu.outputTokens()),
                         formatTokens(mu.cacheRead()), formatTokens(mu.cacheWrite()),
-                        mu.cost()));
+                        mu.cost(), rateStr));
             }
-            sb.append("| **Total** | **%s** | **%s** | **%s** | **%s** | **$%.2f** |\n".formatted(
+            long grandTotal = result.getTotalTokens();
+            String totalRateStr = grandTotal > 0
+                    ? "**$%.2f**".formatted(result.getTotalCost() / grandTotal * 1_000_000)
+                    : "—";
+            sb.append("| **Total** | **%s** | **%s** | **%s** | **%s** | **$%.2f** | %s |\n".formatted(
                     formatTokens(result.getInputTokens()), formatTokens(result.getOutputTokens()),
                     formatTokens(result.getCacheRead()), formatTokens(result.getCacheWrite()),
-                    result.getTotalCost()));
+                    result.getTotalCost(), totalRateStr));
             sb.append("\n");
-            sb.append("Total tokens: %s\n\n".formatted(formatTokens(result.getTotalTokens())));
+            sb.append("**Grand total: %s + %s + %s + %s = %s tokens**\n\n".formatted(
+                    formatTokens(result.getInputTokens()),
+                    formatTokens(result.getOutputTokens()),
+                    formatTokens(result.getCacheRead()),
+                    formatTokens(result.getCacheWrite()),
+                    formatTokens(result.getTotalTokens())));
         } else {
             sb.append("| Metric | Value |\n");
             sb.append("| --- | --- |\n");

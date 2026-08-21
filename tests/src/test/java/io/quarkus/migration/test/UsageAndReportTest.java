@@ -224,7 +224,7 @@ class UsageAndReportTest {
 
         // Total row
         assertContains(report, "| **Total** | **819** | **515** | **48,661** | **25,246** | **$0.20** |");
-        assertContains(report, "Total tokens: 75,241");
+        assertContains(report, "**Grand total: 819 + 515 + 48,661 + 25,246 = 75,241 tokens**");
 
         // Token Usage section should NOT have old key-value rows
         String tokenSection = report.substring(report.indexOf("## Token Usage"));
@@ -318,7 +318,7 @@ class UsageAndReportTest {
 
         // Total row
         assertContains(report, "| **Total** | **819** | **515** | **48,661** | **25,246** | **$0.20** |");
-        assertContains(report, "Total tokens: 75,241");
+        assertContains(report, "**Grand total: 819 + 515 + 48,661 + 25,246 = 75,241 tokens**");
 
         // Run info
         assertContains(report, "| Duration | 0m 28s (28s) |");
