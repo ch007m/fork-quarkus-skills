@@ -160,7 +160,10 @@ public class MigrationResult {
         sb.append("Migration Result: %s [%s]\n".formatted(project, score()));
         sb.append("  agent:    %s\n".formatted(agent));
         sb.append("  model:    %s\n".formatted(model));
-        sb.append("  strategy: %s\n".formatted(strategy));
+        if ("spring-boot".equals(projectType) && skillRef.name() != null
+                && skillRef.name().toLowerCase().contains("migrate")) {
+            sb.append("  strategy: %s\n".formatted(strategy));
+        }
         sb.append("  skill:    %s\n".formatted(skillRef.name()));
         if (skillRef.isRemote()) {
             sb.append("  skill-url: %s\n".formatted(skillRef.url()));

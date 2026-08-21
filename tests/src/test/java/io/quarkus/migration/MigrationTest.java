@@ -220,7 +220,6 @@ class MigrationTest {
 
         boolean projectDefinesChecks = config.checks() != null && !config.checks().isEmpty();
         boolean hasChecks = aiChecks() && projectDefinesChecks;
-        boolean isSpringMigration = "spring-boot".equals(config.type());
         int totalRuns = runs();
 
         // Determine which skills to iterate
@@ -236,7 +235,6 @@ class MigrationTest {
         System.out.println("  agent:    " + aiCmd());
         System.out.println("  provider: " + (provider.isEmpty() ? "(n/a)" : provider));
         System.out.println("  model:    " + model);
-        System.out.println("  strategy: " + (isSpringMigration ? aiStrategy() : "(n/a)"));
         System.out.println("  timeout:  " + aiTimeout() + "s");
         System.out.println("  checks:   " + (hasChecks ? config.checks() : !aiChecks() ? "disabled (runChecks=false)" : "disabled (none defined)"));
         System.out.println("  skills:   " + skills);
@@ -266,6 +264,10 @@ class MigrationTest {
                     "Skill directory not found: " + skillPath);
 
             String skillShort = extractSkillShortName(skillRefStr);
+            boolean isSpringMigration = "spring-boot".equals(config.type()) && isMigrationSkill(skillRefStr);
+            if (isSpringMigration) {
+                System.out.println("  strategy: " + aiStrategy());
+            }
             String suffix = isSpringMigration ? "_" + modelShort + "_" + aiStrategy() : "_" + modelShort;
             String baseRunName = isBenchmark
                     ? config.name() + "_" + skillShort + suffix
@@ -407,6 +409,11 @@ class MigrationTest {
             name = skillRef.substring(skillRef.lastIndexOf('/') + 1);
         }
         return name.replaceAll("[^a-zA-Z0-9-]", "-");
+    }
+
+    private static boolean isMigrationSkill(String skillRef) {
+        String name = extractSkillShortName(skillRef).toLowerCase();
+        return name.contains("migrate");
     }
 
     // -- helpers --

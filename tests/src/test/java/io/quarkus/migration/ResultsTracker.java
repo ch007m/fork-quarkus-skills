@@ -45,7 +45,10 @@ public class ResultsTracker {
         node.put("project", result.getProject());
         node.put("date", Instant.now().toString());
         node.put("model", result.getModel());
-        node.put("strategy", result.getStrategy());
+        boolean isSpringMigration = isSpringMigration(result);
+        if (isSpringMigration) {
+            node.put("strategy", result.getStrategy());
+        }
         node.put("skill", result.getSkill());
         SkillReference ref = result.getSkillRef();
         ObjectNode skillNode = node.putObject("skill_ref");
@@ -138,8 +141,10 @@ public class ResultsTracker {
         sb.append("| Project | %s |\n".formatted(result.getProject()));
         sb.append("| Model | `%s` |\n".formatted(result.getModel()));
         sb.append("| Agent | `%s` |\n".formatted(result.getAgent()));
-        boolean isSpringMigration = "spring-boot".equals(result.getProjectType());
-        sb.append("| Strategy | %s |\n".formatted(isSpringMigration ? result.getStrategy() : "(n/a)"));
+        boolean isSpringMigration = isSpringMigration(result);
+        if (isSpringMigration) {
+            sb.append("| Strategy | %s |\n".formatted(result.getStrategy()));
+        }
         SkillReference ref = result.getSkillRef();
         if (ref.isRemote()) {
             sb.append("| Skill URL | %s |\n".formatted(ref.url()));
@@ -246,7 +251,7 @@ public class ResultsTracker {
         MigrationResult first = results.getFirst();
         String project = first.getProject();
         String agent = first.getAgent();
-        boolean isSpringMigration = "spring-boot".equals(first.getProjectType());
+        boolean isSpringMigration = isSpringMigration(first);
         String strategy = first.getStrategy();
 
         var sb = new StringBuilder();
@@ -350,7 +355,13 @@ public class ResultsTracker {
         return "$%.2f (+/- $%.2f)".formatted(avg, sd);
     }
 
-private static String formatTokens(long n) {
+    private static boolean isSpringMigration(MigrationResult result) {
+        return "spring-boot".equals(result.getProjectType())
+                && result.getSkill() != null
+                && result.getSkill().toLowerCase().contains("migrate");
+    }
+
+    private static String formatTokens(long n) {
         if (n >= 1_000_000) return "%.1fM".formatted(n / 1_000_000.0);
         if (n >= 1_000) return "%,d".formatted(n);
         return String.valueOf(n);

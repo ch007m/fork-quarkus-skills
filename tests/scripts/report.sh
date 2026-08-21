@@ -52,6 +52,7 @@ if not runs:
 
 # Group by (project, model, strategy) for trend tracking
 groups = defaultdict(list)
+has_strategy = any("strategy" in r for r in runs)
 for r in runs:
     key = (r.get("project", "?"), r.get("model", "?"), r.get("strategy", "?"))
     groups[key].append(r)
@@ -64,10 +65,12 @@ def get_run_name(run):
     # Fallback: reconstruct from fields (for old history entries)
     project = run.get("project", "unknown")
     model = run.get("model", "default")
-    strategy = run.get("strategy", "full")
+    strategy = run.get("strategy", "")
     import re
     model_clean = re.sub(r'[^a-zA-Z0-9-]', '-', model)
-    return f"{project}_{model_clean}_{strategy}"
+    if strategy:
+        return f"{project}_{model_clean}_{strategy}"
+    return f"{project}_{model_clean}"
 
 def load_file(run, suffix):
     """Try to load a run artifact file."""
@@ -235,7 +238,8 @@ html_parts.append(f"""
 # === Score Trends ===
 html_parts.append("<h2>📈 Score Trends</h2>")
 html_parts.append("<table><thead><tr>")
-html_parts.append("<th>Project</th><th>Model</th><th>Strategy</th><th>Trend</th><th>Last Run</th><th>Tokens</th><th>Tools</th><th>Cost</th><th>Time</th>")
+strategy_header = "<th>Strategy</th>" if has_strategy else ""
+html_parts.append(f"<th>Project</th><th>Model</th>{strategy_header}<th>Trend</th><th>Last Run</th><th>Tokens</th><th>Tools</th><th>Cost</th><th>Time</th>")
 html_parts.append("</tr></thead><tbody>")
 
 for (project, model, strategy), group_runs in sorted(groups.items()):
@@ -251,10 +255,11 @@ for (project, model, strategy), group_runs in sorted(groups.items()):
     usage = last.get("usage", {})
     date = format_date(last.get("date", ""))
 
+    strategy_cell = f"<td>{html.escape(strategy)}</td>" if has_strategy else ""
     html_parts.append(f"""<tr>
       <td><strong>{html.escape(project)}</strong></td>
       <td>{html.escape(model)}</td>
-      <td>{html.escape(strategy)}</td>
+      {strategy_cell}
       <td><div class="trend">{''.join(scores_html)}</div></td>
       <td>{date}</td>
       <td>{format_tokens(usage.get('total_tokens', 0))}</td>
@@ -273,7 +278,7 @@ for idx, run in enumerate(reversed(runs)):  # newest first
     rid = run_id(run, run_index)
     project = run.get("project", "?")
     model = run.get("model", "?")
-    strategy = run.get("strategy", "?")
+    strategy = run.get("strategy", "")
     score = run.get("score", "?")
     date = format_date(run.get("date", ""))
     duration = run.get("duration_seconds", 0)
@@ -301,7 +306,7 @@ for idx, run in enumerate(reversed(runs)):  # newest first
           <span style="color:var(--text2);margin-left:0.5rem;font-size:0.8rem;">{date}</span>
         </div>
         <div style="font-size:0.8rem;color:var(--text2);">
-          {html.escape(model)} · {strategy} · {duration}s · {format_tokens(usage.get('total_tokens', 0))} tokens · {usage.get('tool_calls', 0)} tools · {format_cost(usage.get('total_cost', 0))}
+          {html.escape(model)}{' · ' + strategy if strategy else ''} · {duration}s · {format_tokens(usage.get('total_tokens', 0))} tokens · {usage.get('tool_calls', 0)} tools · {format_cost(usage.get('total_cost', 0))}
         </div>
       </div>
       <div class="checks" style="margin-top:0.5rem;">{checks_html}</div>
