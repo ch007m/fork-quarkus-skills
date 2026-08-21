@@ -237,6 +237,8 @@ public class ResultsTracker {
         double[] cacheWrites = results.stream().mapToDouble(MigrationResult::getCacheWrite).toArray();
         double[] totals = results.stream().mapToDouble(MigrationResult::getTotalTokens).toArray();
         double[] costs = results.stream().mapToDouble(MigrationResult::getTotalCost).toArray();
+        double[] rates = results.stream().mapToDouble(r ->
+                r.getTotalTokens() > 0 ? r.getTotalCost() / r.getTotalTokens() * 1_000_000 : 0).toArray();
 
         MigrationResult first = results.getFirst();
         String project = first.getProject();
@@ -250,10 +252,10 @@ public class ResultsTracker {
         sb.append("## Results\n\n");
         sb.append("| SKILL | ");
         if (isSpringMigration) sb.append("Spring Compatibility ? | ");
-        sb.append("Agent | Duration | Input | Output | Cache Read | Cache Write | Total Tokens | Cost |\n");
+        sb.append("Agent | Duration | Input | Output | Cache Read | Cache Write | Total Tokens | Cost | $/MTok |\n");
         sb.append("|---|");
         if (isSpringMigration) sb.append("---|");
-        sb.append("---|---|---|---|---|---|---|---|\n");
+        sb.append("---|---|---|---|---|---|---|---|---|\n");
 
         sb.append("| **%s** ".formatted(project));
         if (isSpringMigration) sb.append("| **%s** ".formatted(strategy));
@@ -265,6 +267,7 @@ public class ResultsTracker {
         sb.append("| **%s** ".formatted(formatTokensWithStddev(cacheWrites)));
         sb.append("| **%s** ".formatted(formatTokensWithStddev(totals)));
         sb.append("| **%s** ".formatted(formatCostWithStddev(costs)));
+        sb.append("| **%s** ".formatted(formatRateWithStddev(rates)));
         sb.append("|\n");
 
         for (int i = 0; i < n; i++) {
@@ -280,6 +283,10 @@ public class ResultsTracker {
             sb.append("| %s ".formatted(formatTokens(r.getCacheWrite())));
             sb.append("| %s ".formatted(formatTokens(r.getTotalTokens())));
             sb.append("| $%.2f ".formatted(r.getTotalCost()));
+            long runTotal = r.getTotalTokens();
+            sb.append("| %s ".formatted(runTotal > 0
+                    ? "$%.2f".formatted(r.getTotalCost() / runTotal * 1_000_000)
+                    : "—"));
             sb.append("|\n");
         }
 
@@ -326,6 +333,12 @@ public class ResultsTracker {
         return "$%.2f (+/- $%.2f)".formatted(avg, sd);
     }
 
+    private static String formatRateWithStddev(double[] values) {
+        double avg = mean(values);
+        double sd = stddev(values);
+        return "$%.2f (+/- $%.2f)".formatted(avg, sd);
+    }
+
 private static String formatTokens(long n) {
         if (n >= 1_000_000) return "%.1fM".formatted(n / 1_000_000.0);
         if (n >= 1_000) return "%,d".formatted(n);
@@ -341,8 +354,8 @@ private static String formatTokens(long n) {
         sb.append("# Report benchmark and comparison: %s\n\n".formatted(titleSkills));
 
         sb.append("## Global Summary\n\n");
-        sb.append("| Skill | Runs | Avg Duration | Avg Input | Avg Output | Avg Cache Read | Avg Cache Write | Avg Total Tokens | Avg Cost |\n");
-        sb.append("|---|---|---|---|---|---|---|---|---|\n");
+        sb.append("| Skill | Runs | Avg Duration | Avg Input | Avg Output | Avg Cache Read | Avg Cache Write | Avg Total Tokens | Avg Cost | Avg $/MTok |\n");
+        sb.append("|---|---|---|---|---|---|---|---|---|---|\n");
 
         var skillAvgs = new ArrayList<double[]>();
 
@@ -358,17 +371,21 @@ private static String formatTokens(long n) {
             double[] cacheWrites = results.stream().mapToDouble(MigrationResult::getCacheWrite).toArray();
             double[] totals = results.stream().mapToDouble(MigrationResult::getTotalTokens).toArray();
             double[] costs = results.stream().mapToDouble(MigrationResult::getTotalCost).toArray();
+            double[] gRates = results.stream().mapToDouble(r ->
+                    r.getTotalTokens() > 0 ? r.getTotalCost() / r.getTotalTokens() * 1_000_000 : 0).toArray();
 
-            sb.append("| %s | %d | %s | %s | %s | %s | %s | %s | %s |\n".formatted(
+            sb.append("| %s | %d | %s | %s | %s | %s | %s | %s | %s | %s |\n".formatted(
                     skillName, runs,
                     formatDurationWithStddev(durations),
                     formatTokensWithStddev(inputs), formatTokensWithStddev(outputs),
                     formatTokensWithStddev(cacheReads), formatTokensWithStddev(cacheWrites),
-                    formatTokensWithStddev(totals), formatCostWithStddev(costs)));
+                    formatTokensWithStddev(totals), formatCostWithStddev(costs),
+                    formatRateWithStddev(gRates)));
 
             skillAvgs.add(new double[]{
                     mean(durations), mean(inputs), mean(outputs),
-                    mean(cacheReads), mean(cacheWrites), mean(totals), mean(costs)
+                    mean(cacheReads), mean(cacheWrites), mean(totals), mean(costs),
+                    mean(gRates)
             });
         }
 

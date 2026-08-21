@@ -247,7 +247,6 @@ class MigrationTest {
 
         Path outputDir = Path.of("target", "runs").toAbsolutePath();
         int timeout = config.timeout() > 0 ? config.timeout() : aiTimeout();
-        String providerShort = provider.isEmpty() ? "default" : provider.replaceAll("[^a-zA-Z0-9-]", "-");
         String modelShort = model.isEmpty() ? "default" : model.replaceAll("[^a-zA-Z0-9-]", "-");
 
         List<String> lastFailures = new ArrayList<>();
@@ -267,9 +266,10 @@ class MigrationTest {
                     "Skill directory not found: " + skillPath);
 
             String skillShort = extractSkillShortName(skillRefStr);
+            String suffix = isSpringMigration ? "_" + modelShort + "_" + aiStrategy() : "_" + modelShort;
             String baseRunName = isBenchmark
-                    ? config.name() + "_" + skillShort + "_" + providerShort + "_" + modelShort + "_" + aiStrategy()
-                    : config.name() + "_" + providerShort + "_" + modelShort + "_" + aiStrategy();
+                    ? config.name() + "_" + skillShort + suffix
+                    : config.name() + suffix;
 
             if (isBenchmark) {
                 System.out.println("\n" + "=".repeat(60));
