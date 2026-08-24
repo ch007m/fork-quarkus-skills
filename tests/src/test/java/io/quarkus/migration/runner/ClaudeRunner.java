@@ -298,10 +298,6 @@ public class ClaudeRunner extends AbstractRunner implements AgentRunner {
                             // Sum across all models in modelUsage for accurate totals
                             JsonNode modelUsage = event.path("modelUsage");
                             if (modelUsage.isObject()) {
-                                // inputTotal = 0;
-                                // outputTotal = 0;
-                                // cacheReadTotal = 0;
-                                // cacheWriteTotal = 0;
                                 perModelUsages = new ArrayList<>();
                                 var fields = modelUsage.fields();
                                 while (fields.hasNext()) {
