@@ -24,14 +24,15 @@
         <ai.model></ai.model>
         <ai.strategy>full</ai.strategy>
         <ai.timeout>300</ai.timeout>
-        <ai.cmd>opencode</ai.cmd>
+        <ai.cmd>claude</ai.cmd>
         <ai.skill></ai.skill>
         <ai.skill.branch></ai.skill.branch>
         <ai.projects></ai.projects>
         <ai.skills></ai.skills>
+        <ai.enabled></ai.enabled>
         <runs>1</runs>
         <runChecks>true</runChecks>
-        <ai.review>true</ai.review>
+        <ai.review>false</ai.review>
     </properties>
 
     <dependencies>
@@ -78,6 +79,7 @@
                         <runs>${runs}</runs>
                         <runChecks>${runChecks}</runChecks>
                         <ai.review>${ai.review}</ai.review>
+                        <ai.enabled>${ai.enabled}</ai.enabled>
                     </systemPropertyVariables>
                     <!-- Long-running tests -->
                     <forkedProcessTimeoutInSeconds>3600</forkedProcessTimeoutInSeconds>

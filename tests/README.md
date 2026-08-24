@@ -353,20 +353,66 @@ pi --session target/runs/spring-rest-api_claude-sonnet-4-5-20250514_full.session
 
 ## Test Projects
 
-### In-Repo (self-contained, no external dependencies)
+Each project has a `project.yaml` that can include a `test.enabled` flag. Projects with `enabled: false` (or without the flag set to `true`) are **skipped by default** when running `mvn test` — they are available for on-demand use but won't run in a blanket test execution.
+
+### Enabled by default
+
+These projects run when you execute `mvn test` (or `mvn clean test`) without any project filter:
 
 | Project                | Description                                                                                             | Complexity | Checks |
 |------------------------|---------------------------------------------------------------------------------------------------------|------------|--------|
 | `spring-rest-api`      | REST controller + service + validation, no DB                                                           | Trivial    | builds, tests-pass, no-spring-deps, has-quarkus, starts-up |
 | `spring-jpa-crud`      | CRUD with JPA, H2, Spring Data, custom queries                                                          | Low        | builds, tests-pass, no-spring-deps, has-quarkus, starts-up |
 | `spring-boot-todo-app` | TODO application designed using REST Controller + Thymeleaf Web + Data REST and JPA, MySQL, Spring Data | Middle     | builds, tests-pass, no-spring-deps, has-quarkus, starts-up |
+| `spring-petclinic`     | Classic PetClinic with Thymeleaf, JPA, caching (cloned at runtime)                                      | Medium     | builds, tests-pass, no-spring-deps, has-quarkus, starts-up, no-thymeleaf |
+| `spring-petclinic-rest`| REST-only PetClinic, no templates (cloned at runtime)                                                   | Medium     | builds, tests-pass, no-spring-deps, has-quarkus, starts-up |
 
-### External (cloned at runtime)
+### Disabled by default (`test.enabled: false`)
 
-| Project | Description | Complexity | Checks |
-|---------|-------------|-----------|--------|
-| `spring-petclinic` | Classic PetClinic with Thymeleaf, JPA, caching | Medium | builds, tests-pass, no-spring-deps, has-quarkus, starts-up, no-thymeleaf |
-| `spring-petclinic-rest` | REST-only PetClinic, no templates | Medium | builds, tests-pass, no-spring-deps, has-quarkus, starts-up |
+These projects exist in `projects/` but are skipped unless explicitly requested. They are typically larger, experimental, or used for targeted testing only:
+
+| Project                | Description                                                                                             |
+|------------------------|---------------------------------------------------------------------------------------------------------|
+| `dummy`                | Empty project for verifying agent setup                                                                 |
+| `cargotracker`         | Eclipse Cargo Tracker — Jakarta EE / Spring Boot DDD application                                       |
+| `coffee-shop`          | Simple coffeeshop Spring application                                                                    |
+| `daytrader`            | DayTrader — benchmark application for stock trading                                                     |
+| `jhipster-spring-boot` | JHipster Spring Boot sample application                                                                 |
+| `realworld`            | RealWorld.io backend using Spring Security, Spring Data JPA                                             |
+
+### Running disabled projects
+
+There are three ways to include disabled projects:
+
+```bash
+# 1. Select a specific disabled project by name — bypasses the enabled flag
+mvn test -Dai.project=dummy
+
+# 2. Select multiple projects (enabled or disabled) — bypasses the enabled flag
+mvn test -Dai.projects=dummy,cargotracker,spring-rest-api
+
+# 3. Include ALL projects regardless of enabled flag
+mvn test -Dai.enabled=all
+```
+
+> [!NOTE]
+> When using `-Dai.project` or `-Dai.projects`, the `test.enabled` flag is ignored — the harness runs exactly the projects you asked for. The `-Dai.enabled=all` flag is useful when you want to run every project in the repository without listing them.
+
+### Enabling a project permanently
+
+To make a disabled project run by default, edit its `project.yaml` and either remove the `test` block or set `enabled: true`:
+
+```yaml
+# Before — disabled
+test:
+  enabled: false
+
+# After — enabled (either form works)
+test:
+  enabled: true
+
+# Or simply remove the test block entirely (defaults to enabled)
+```
 
 ## Checks
 

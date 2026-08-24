@@ -1,7 +1,7 @@
 name: spring-petclinic
 description: Classic Spring PetClinic with Thymeleaf, Spring Data JPA, caching
 type: spring-boot
-skill: spring-boot-to-quarkus
+skill: migrate-spring-to-quarkus
 source: https://github.com/spring-projects/spring-petclinic
 ref: main
 timeout: 900

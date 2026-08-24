@@ -3,3 +3,6 @@ description: ReadWorld.io - https://github.com/realworld-apps/realworld backend 
 type: spring-boot
 source: local
 timeout: 900
+skill: migrate-spring-to-quarkus
+test:
+  enabled: false

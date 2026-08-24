@@ -4,3 +4,5 @@ type: dummy
 skill: ../tests/skills/dummy
 source: local
 timeout: 300
+test:
+  enabled: false

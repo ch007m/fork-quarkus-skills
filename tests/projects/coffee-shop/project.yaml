@@ -3,3 +3,6 @@ description: Simple coffeeshop Spring application
 type: spring-boot
 source: local
 timeout: 900
+skill: migrate-spring-to-quarkus
+test:
+  enabled: false
