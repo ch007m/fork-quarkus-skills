@@ -57,7 +57,8 @@ public class MigrationChecks {
                     getMvnCmd(), "-q", "quarkus:dev",
                     "-Dquarkus.http.port=" + port,
                     "-Dquarkus.devservices.enabled=false",
-                    "-Dquarkus.analytics.disabled=true"
+                    "-Dquarkus.analytics.disabled=true",
+                    "-Dquarkus.console.enabled=false"
             ).directory(projectDir.toFile())
              .redirectErrorStream(true)
              .redirectOutput(startupLog.toFile());
