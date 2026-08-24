@@ -13,6 +13,8 @@ public record ProjectConfig(
         String source,
         String ref,
         int timeout,
+        List<String> checks,
+        List<EndpointCheck> endpoints
         TestConfig test,
         List<String> checks
 ) {

@@ -10,4 +10,14 @@ checks:
   - tests-pass
   - no-spring-deps
   - has-quarkus
-  - starts-up
+  - smoke-test
+
+endpoints:
+  - path: /api/todos
+    method: GET
+    expected_status: 200
+  - path: /api/todos
+    method: POST
+    body: '{"title":"Smoke test todo","completed":false}'
+    expected_status: 201
+    body_contains: '"title"'
