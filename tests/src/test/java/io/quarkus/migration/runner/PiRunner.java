@@ -18,8 +18,8 @@ public class PiRunner extends AbstractRunner implements AgentRunner {
 
     private int streamToolCount;
 
-    public PiRunner(String aiCmd, String provider, String model, Path skillPath, String strategy, int timeoutSeconds, String prompt, boolean sanitize) {
-        super(aiCmd, provider, model, skillPath, strategy, timeoutSeconds, prompt, sanitize);
+    public PiRunner(String aiCmd, String provider, String model, Path skillPath, String strategy, int timeoutSeconds, String prompt, String skillArgs, boolean sanitize) {
+        super(aiCmd, provider, model, skillPath, strategy, timeoutSeconds, prompt, skillArgs, sanitize);
     }
 
     @Override

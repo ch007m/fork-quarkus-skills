@@ -165,7 +165,7 @@ class SummaryReportTest {
 
         ClaudeRunner runner = new ClaudeRunner(
                 "claude", null, "claude-opus-4-6", Path.of("/tmp/skill"),
-                "full", 300, "", false);
+                "full", 300, "", "", false);
 
         // Extract from fixture 1 (skill A — efficient)
         AgentRunner.UsageStats stats1 = runner.extractUsage(

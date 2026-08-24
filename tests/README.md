@@ -99,6 +99,7 @@ The complete list of the configurations via `-D` flags:
 | `ai.projects`     | *(all)*                                                                                                                                                                                             | Comma-separated list of projects to test (e.g. `dummy,spring-rest-api`). Overrides `ai.project`                                                                                                                                                                                                                                                                                                                                                                  |
 | `ai.skill`        | *(from project.yaml)*                                                                                                                                                                               | Skill to use: a local name (e.g. `spring-boot-to-quarkus`) or a GitHub URL                                                                                                                                                                                                                                                                                                                                                                                       |
 | `ai.skills`       | *(from project.yaml)*                                                                                                                                                                               | Comma-separated list of skills for benchmark comparison (max 2). Overrides `ai.skill`                                                                                                                                                                                                                                                                                                                                                                            |
+| `ai.args`         | *(empty)*                                                                                                                                                                                           | Space-separated skill arguments substituted into `SKILL.md` placeholders (see [Skill arguments](#skill-arguments))                                                                                                                                                                                                                                                                                                                                               |
 | `ai.skill.branch` | *(parsed from URL)*                                                                                                                                                                                 | Explicit branch — only needed when the branch name contains `/` and the URL has a subpath                                                                                                                                                                                                                                                                                                                                                                        |
 | `runs`            | `1`                                                                                                                                                                                                 | Number of times to repeat the migration. Each run gets a fresh workdir, its own report, and a separate entry in `history.jsonl`. Useful for collecting data across multiple runs                                                                                                                                                                                                                                                                                 |
 | `runChecks`       | `true`                                                                                                                                                                                              | When `false`, skip verification checks after migration. Also skipped when the project has no checks defined                                                                                                                                                                                                                                                                                                                                                      |
@@ -125,6 +126,61 @@ mvn test -Dai.skill=https://github.com/org/repo/tree/branch/with/slashes/new-fea
 ```
 
 Remote clones are cached in `target/skills/` (or within the AI agent recommended folder) and cleaned with `mvn clean`.
+
+### Skill arguments
+
+Skills can declare **named arguments** in their YAML frontmatter. The test harness substitutes values passed via `-Dai.args` into the `SKILL.md` content before sending it to the AI agent.
+
+#### Declaring arguments in SKILL.md
+
+Add an `arguments:` list in the frontmatter:
+
+```yaml
+---
+name: simple-analysis
+description: Analyzes source code using a specified analysis tool
+arguments:
+  - tool
+  - format
+---
+
+# Instructions
+
+Analyze the code using `$tool` and output as `$format`.
+
+All arguments: $ARGUMENTS
+First arg: $0
+Second arg: $1
+```
+
+#### Placeholder reference
+
+| Placeholder   | Resolves to                                                                 |
+|---------------|-----------------------------------------------------------------------------|
+| `$tool`       | The value at the position matching the argument name in the frontmatter list (here: 1st value) |
+| `$format`     | The value at the 2nd position                                               |
+| `$0`, `$1`    | Positional — 1st and 2nd values regardless of name                          |
+| `$ARGUMENTS`  | The full `ai.args` string as-is                                             |
+
+Placeholders without a matching value are left intact (e.g. `$format` stays `$format` if only one arg is provided).
+
+#### Passing arguments
+
+Arguments are space-separated:
+
+```bash
+# Single argument — $tool / $0 → mtool
+mvn test -Dai.project=dummy -Dai.skill=simple-analysis -Dai.args=mtool
+
+# Two arguments — $tool / $0 → mtool, $format / $1 → json
+mvn test -Dai.project=dummy -Dai.skill=simple-analysis -Dai.args="mtool json"
+
+# No arguments — all placeholders remain unsubstituted
+mvn test -Dai.project=dummy -Dai.skill=simple-analysis
+```
+
+> [!NOTE]
+> Skill argument substitution is currently supported by the **Claude Code** runner. Other runners receive `ai.args` but may not perform substitution in the same way.
 
 ### Examples
 

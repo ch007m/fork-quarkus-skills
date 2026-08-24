@@ -27,8 +27,8 @@ public class OpenCodeRunner extends AbstractRunner implements AgentRunner {
     private int streamToolCount;
 
     public OpenCodeRunner(String aiCmd, String provider, String model, Path skillPath, String strategy, int timeoutSeconds,
-            String prompt, boolean sanitize) {
-        super(aiCmd, provider, model, skillPath, strategy, timeoutSeconds, prompt, sanitize);
+            String prompt, String skillArgs, boolean sanitize) {
+        super(aiCmd, provider, model, skillPath, strategy, timeoutSeconds, prompt, skillArgs, sanitize);
     }
 
     /**

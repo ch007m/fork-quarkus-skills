@@ -16,11 +16,12 @@ public abstract class AbstractRunner {
     protected int timeoutSeconds;
     protected Path skillPath;
     protected String prompt;
+    protected String skillArgs;
     protected boolean sanitize;
     protected ObjectMapper JSON;
 
     public AbstractRunner(String aiCmd, String provider, String model, Path skillPath, String strategy, int timeoutSeconds,
-            String prompt, boolean sanitize) {
+            String prompt, String skillArgs, boolean sanitize) {
         this.aiCmd = aiCmd;
         this.provider = provider;
         this.model = model;
@@ -28,6 +29,7 @@ public abstract class AbstractRunner {
         this.strategy = strategy;
         this.timeoutSeconds = timeoutSeconds;
         this.prompt = prompt;
+        this.skillArgs = skillArgs != null ? skillArgs : "";
         this.sanitize = sanitize;
         this.JSON = new ObjectMapper();
     }

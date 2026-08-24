@@ -122,9 +122,19 @@ class MigrationTest {
         return Integer.parseInt(System.getProperty("runs", "1"));
     }
 
+    /** Space-separated skill arguments to substitute $0, $1, $tool, etc. in SKILL.md. */
+    static String aiArgs() {
+        return System.getProperty("ai.args", "");
+    }
+
     /** Comma-separated list of projects to test. Overrides ai.project when set. */
     static String aiProjects() {
         return System.getProperty("ai.projects", "");
+    }
+
+    /** When set to "all", include projects with enabled: false. Default: empty (respect the flag). */
+    static String aiEnabled() {
+        return System.getProperty("ai.enabled", "");
     }
 
     /** Comma-separated list of skills for benchmark (max 2). Overrides ai.skill when set. */
@@ -184,11 +194,14 @@ class MigrationTest {
             filterSet.add(singleFilter);
         }
 
+        boolean includeDisabled = "all".equalsIgnoreCase(aiEnabled());
+        boolean hasExplicitFilter = !filterSet.isEmpty();
+
         try (var dirs = Files.list(projects)) {
             return dirs
                     .filter(Files::isDirectory)
                     .filter(p -> Files.exists(p.resolve("project.yaml")))
-                    .filter(p -> filterSet.isEmpty() || filterSet.contains(p.getFileName().toString()))
+                    .filter(p -> hasExplicitFilter ? filterSet.contains(p.getFileName().toString()) : true)
                     .sorted()
                     .map(p -> {
                         try {
@@ -199,6 +212,10 @@ class MigrationTest {
                         } catch (IOException e) {
                             throw new UncheckedIOException(e);
                         }
+                    })
+                    .filter(args -> {
+                        ProjectConfig config = (ProjectConfig) args.get()[0];
+                        return config.isTestEnabled() || includeDisabled || hasExplicitFilter;
                     })
                     .toList()  // materialize before stream closes
                     .stream();
@@ -307,7 +324,7 @@ class MigrationTest {
                 result.setProjectType(config.type());
 
                 // 2. Run migration
-                AgentRunner runner = RunnerRegistry.getRunner(aiCmd(), provider, model, skillPath, aiStrategy(), timeout, aiPrompt(), aiSanitize());
+                AgentRunner runner = RunnerRegistry.getRunner(aiCmd(), provider, model, skillPath, aiStrategy(), timeout, aiPrompt(), aiArgs(), aiSanitize());
 
                 System.out.printf("  Running migration agent: %s ...%n", aiCmd());
                 AgentRunner.RunOutput output = runner.run(workDir, outputDir, runName);

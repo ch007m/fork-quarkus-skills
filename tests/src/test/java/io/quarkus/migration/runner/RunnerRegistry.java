@@ -12,7 +12,7 @@ public enum RunnerRegistry {
     @FunctionalInterface
     interface RunnerFactory {
         AgentRunner create(String aiCmd, String provider, String model,
-                           Path skillPath, String strategy, int timeoutSeconds, String prompt, boolean sanitize);
+                           Path skillPath, String strategy, int timeoutSeconds, String prompt, String skillArgs, boolean sanitize);
     }
 
     private final String key;
@@ -50,14 +50,14 @@ public enum RunnerRegistry {
 
     // Factory method
     public static AgentRunner getRunner(String aiCmd, String provider, String model,
-                                        Path skillPath, String strategy, int timeoutSeconds, String prompt, boolean sanitize) {
+                                        Path skillPath, String strategy, int timeoutSeconds, String prompt, String skillArgs, boolean sanitize) {
         RunnerRegistry registry = lookup(aiCmd);
         if (registry == null) {
             throw new IllegalArgumentException("No runner registered for the agent: " + aiCmd);
         }
         String resolvedProvider = (provider != null && !provider.isBlank()) ? provider : registry.defaultProvider;
         String resolvedModel = (model != null && !model.isBlank()) ? model : registry.defaultModel;
-        return registry.factory.create(aiCmd, resolvedProvider, resolvedModel, skillPath, strategy, timeoutSeconds, prompt, sanitize);
+        return registry.factory.create(aiCmd, resolvedProvider, resolvedModel, skillPath, strategy, timeoutSeconds, prompt, skillArgs, sanitize);
     }
 
     private static RunnerRegistry lookup(String aiCmd) {

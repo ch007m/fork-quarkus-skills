@@ -20,8 +20,8 @@ public class ClaudeRunner extends AbstractRunner implements AgentRunner {
     private String sessionId;
 
     public ClaudeRunner(String aiCmd, String provider, String model, Path skillPath, String strategy,
-            int timeoutSeconds, String prompt, boolean sanitize) {
-        super(aiCmd, provider, model, skillPath, strategy, timeoutSeconds, prompt, sanitize);
+            int timeoutSeconds, String prompt, String skillArgs, boolean sanitize) {
+        super(aiCmd, provider, model, skillPath, strategy, timeoutSeconds, prompt, skillArgs, sanitize);
     }
 
     @Override
@@ -123,12 +123,75 @@ public class ClaudeRunner extends AbstractRunner implements AgentRunner {
         Path skillMd = skillPath.resolve("SKILL.md");
         if (Files.exists(skillMd)) {
             String skillContent = Files.readString(skillMd);
+            skillContent = substituteSkillArgs(skillContent);
             parts.add("<skill-instructions>\n" + skillContent + "\n</skill-instructions>");
         }
 
         String instruction = prompt.isEmpty() ? generateMigrationPrompt() : prompt;
         parts.add(instruction);
         return String.join("\n\n", parts);
+    }
+
+    /**
+     * Substitute skill argument placeholders ($ARGUMENTS, $0, $1, $tool, etc.)
+     * with actual values from the skillArgs string.
+     *
+     * Parses the YAML frontmatter to discover named arguments, then maps
+     * positional values from skillArgs (space-separated) to both positional
+     * ($0, $1) and named ($tool, $format) references.
+     */
+    private String substituteSkillArgs(String skillContent) {
+        if (skillArgs.isBlank()) return skillContent;
+
+        String[] argValues = skillArgs.trim().split("\\s+");
+
+        // Parse argument names from frontmatter
+        List<String> argNames = parseArgumentNames(skillContent);
+
+        // Replace $ARGUMENTS with the full args string
+        String result = skillContent.replace("$ARGUMENTS", skillArgs.trim());
+
+        // Replace positional ($0, $1, ...) and named ($tool, $format, ...) references
+        for (int i = 0; i < argValues.length; i++) {
+            result = result.replace("$" + i, argValues[i]);
+            if (i < argNames.size()) {
+                result = result.replace("$" + argNames.get(i), argValues[i]);
+            }
+        }
+
+        return result;
+    }
+
+    private List<String> parseArgumentNames(String skillContent) {
+        var names = new ArrayList<String>();
+        // Extract frontmatter between --- markers
+        if (!skillContent.startsWith("---")) return names;
+        int endIdx = skillContent.indexOf("---", 3);
+        if (endIdx < 0) return names;
+        String frontmatter = skillContent.substring(3, endIdx);
+
+        boolean inArguments = false;
+        for (String line : frontmatter.split("\n")) {
+            String trimmed = line.trim();
+            if (trimmed.startsWith("arguments:")) {
+                // Check for inline list: arguments: tool format
+                String inline = trimmed.substring("arguments:".length()).trim();
+                if (!inline.isEmpty()) {
+                    for (String name : inline.split("\\s+")) {
+                        names.add(name.trim());
+                    }
+                    return names;
+                }
+                inArguments = true;
+            } else if (inArguments) {
+                if (trimmed.startsWith("- ")) {
+                    names.add(trimmed.substring(2).trim());
+                } else if (!trimmed.isEmpty()) {
+                    break;
+                }
+            }
+        }
+        return names;
     }
 
     private void captureSessionId(JsonNode event) {
@@ -235,10 +298,10 @@ public class ClaudeRunner extends AbstractRunner implements AgentRunner {
                             // Sum across all models in modelUsage for accurate totals
                             JsonNode modelUsage = event.path("modelUsage");
                             if (modelUsage.isObject()) {
-                                inputTotal = 0;
-                                outputTotal = 0;
-                                cacheReadTotal = 0;
-                                cacheWriteTotal = 0;
+                                // inputTotal = 0;
+                                // outputTotal = 0;
+                                // cacheReadTotal = 0;
+                                // cacheWriteTotal = 0;
                                 perModelUsages = new ArrayList<>();
                                 var fields = modelUsage.fields();
                                 while (fields.hasNext()) {

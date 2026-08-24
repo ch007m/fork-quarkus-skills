@@ -66,7 +66,7 @@ class UsageAndReportTest {
     void extractUsageSumsModelUsage() {
         ClaudeRunner runner = new ClaudeRunner(
                 "claude", null, "claude-opus-4-6", Path.of("/tmp/skill"),
-                "full", 300, "", false);
+                "full", 300, "", "", false);
 
         AgentRunner.UsageStats stats = runner.extractUsage(
                 Collections.singletonList(fixtureFile.toString()));
@@ -121,7 +121,7 @@ class UsageAndReportTest {
     void extractUsageNullFiles() {
         ClaudeRunner runner = new ClaudeRunner(
                 "claude", null, null, Path.of("/tmp/skill"),
-                "full", 300, "", false);
+                "full", 300, "", "", false);
 
         AgentRunner.UsageStats stats = runner.extractUsage(null);
         assertEquals(0, stats.totalTokens());
@@ -133,7 +133,7 @@ class UsageAndReportTest {
     void extractUsageEmptyFiles() {
         ClaudeRunner runner = new ClaudeRunner(
                 "claude", null, null, Path.of("/tmp/skill"),
-                "full", 300, "", false);
+                "full", 300, "", "", false);
 
         AgentRunner.UsageStats stats = runner.extractUsage(Collections.emptyList());
         assertEquals(0, stats.totalTokens());
@@ -290,7 +290,7 @@ class UsageAndReportTest {
     void endToEndFixtureToReport() throws IOException {
         ClaudeRunner runner = new ClaudeRunner(
                 "claude", null, "claude-opus-4-6", Path.of("/tmp/skill"),
-                "full", 300, "Say Hello.", false);
+                "full", 300, "Say Hello.", "", false);
 
         AgentRunner.UsageStats stats = runner.extractUsage(
                 Collections.singletonList(fixtureFile.toString()));
