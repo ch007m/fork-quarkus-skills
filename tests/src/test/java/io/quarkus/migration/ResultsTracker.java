@@ -10,6 +10,7 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.Locale;
 
 /**
  * Appends migration results to a JSONL history file for trend tracking.
@@ -164,9 +165,9 @@ public class ResultsTracker {
             for (var mu : modelUsages) {
                 long muTotal = mu.inputTokens() + mu.outputTokens() + mu.cacheRead() + mu.cacheWrite();
                 String rateStr = muTotal > 0
-                        ? "$%.2f".formatted(mu.cost() / muTotal * 1_000_000)
+                        ? String.format(Locale.US, "$%.2f", mu.cost() / muTotal * 1_000_000)
                         : "—";
-                sb.append("| %s | %s | %s | %s | %s | $%.4f | %s |\n".formatted(
+                sb.append(String.format(Locale.US, "| %s | %s | %s | %s | %s | $%.4f | %s |\n",
                         mu.model(),
                         formatTokens(mu.inputTokens()), formatTokens(mu.outputTokens()),
                         formatTokens(mu.cacheRead()), formatTokens(mu.cacheWrite()),
@@ -174,9 +175,9 @@ public class ResultsTracker {
             }
             long grandTotal = result.getTotalTokens();
             String totalRateStr = grandTotal > 0
-                    ? "**$%.2f**".formatted(result.getTotalCost() / grandTotal * 1_000_000)
+                    ? String.format(Locale.US, "**$%.2f**", result.getTotalCost() / grandTotal * 1_000_000)
                     : "—";
-            sb.append("| **Total** | **%s** | **%s** | **%s** | **%s** | **$%.2f** | %s |\n".formatted(
+            sb.append(String.format(Locale.US, "| **Total** | **%s** | **%s** | **%s** | **%s** | **$%.2f** | %s |\n",
                     formatTokens(result.getInputTokens()), formatTokens(result.getOutputTokens()),
                     formatTokens(result.getCacheRead()), formatTokens(result.getCacheWrite()),
                     result.getTotalCost(), totalRateStr));
@@ -196,7 +197,7 @@ public class ResultsTracker {
             sb.append("| Cache read | %s |\n".formatted(formatTokens(result.getCacheRead())));
             sb.append("| Cache write | %s |\n".formatted(formatTokens(result.getCacheWrite())));
             sb.append("| Total tokens | %s |\n".formatted(formatTokens(result.getTotalTokens())));
-            sb.append("| Cost | $%.2f |\n".formatted(result.getTotalCost()));
+            sb.append(String.format(Locale.US, "| Cost | $%.2f |\n", result.getTotalCost()));
             sb.append("\n");
         }
 
@@ -216,7 +217,7 @@ public class ResultsTracker {
             sb.append("| Metric | Value |\n");
             sb.append("| --- | --- |\n");
             sb.append("| Review tokens | %s |\n".formatted(formatTokens(result.getReviewTokens())));
-            sb.append("| Review cost | $%.4f |\n".formatted(result.getReviewCost()));
+            sb.append(String.format(Locale.US, "| Review cost | $%.4f |\n", result.getReviewCost()));
             sb.append("\n");
             sb.append(result.getReview());
             sb.append("\n\n");
@@ -292,10 +293,10 @@ public class ResultsTracker {
             sb.append("| %s ".formatted(formatTokens(r.getCacheRead())));
             sb.append("| %s ".formatted(formatTokens(r.getCacheWrite())));
             sb.append("| %s ".formatted(formatTokens(r.getTotalTokens())));
-            sb.append("| $%.2f ".formatted(r.getTotalCost()));
+            sb.append(String.format(Locale.US, "| $%.2f ", r.getTotalCost()));
             long runTotal = r.getTotalTokens();
             sb.append("| %s ".formatted(runTotal > 0
-                    ? "$%.2f".formatted(r.getTotalCost() / runTotal * 1_000_000)
+                    ? String.format(Locale.US, "$%.2f", r.getTotalCost() / runTotal * 1_000_000)
                     : "—"));
             sb.append("|\n");
         }
@@ -346,13 +347,13 @@ public class ResultsTracker {
     private static String formatCostWithStddev(double[] values) {
         double avg = mean(values);
         double sd = stddev(values);
-        return "$%.2f (+/- $%.2f)".formatted(avg, sd);
+        return String.format(Locale.US, "$%.2f (+/- $%.2f)", avg, sd);
     }
 
     private static String formatRateWithStddev(double[] values) {
         double avg = mean(values);
         double sd = stddev(values);
-        return "$%.2f (+/- $%.2f)".formatted(avg, sd);
+        return String.format(Locale.US, "$%.2f (+/- $%.2f)", avg, sd);
     }
 
     private static boolean isSpringMigration(MigrationResult result) {
@@ -362,8 +363,8 @@ public class ResultsTracker {
     }
 
     private static String formatTokens(long n) {
-        if (n >= 1_000_000) return "%.1fM".formatted(n / 1_000_000.0);
-        if (n >= 1_000) return "%,d".formatted(n);
+        if (n >= 1_000_000) return String.format(Locale.US, "%.1fM", n / 1_000_000.0);
+        if (n >= 1_000) return String.format(Locale.US, "%,d", n);
         return String.valueOf(n);
     }
 
@@ -423,7 +424,7 @@ public class ResultsTracker {
                     sb.append("| — ");
                 } else {
                     double pct = (b[i] - a[i]) / a[i] * 100;
-                    sb.append("| %+.1f%% ".formatted(pct));
+                    sb.append(String.format(Locale.US, "| %+.1f%% ", pct));
                 }
             }
             sb.append("|\n");
