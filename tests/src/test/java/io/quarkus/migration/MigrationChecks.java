@@ -90,6 +90,38 @@ public class MigrationChecks {
             }
             dumpStartupLog(startupLog, "timed out after 60s waiting for HTTP readiness on port " + port);
             return false;
+    /**
+     * Start the app, hit each endpoint defined in project.yaml, and verify responses.
+     * Implicitly verifies startup — projects using this check don't need starts-up separately.
+     */
+    public boolean smokeTest() {
+        if (endpoints.isEmpty()) {
+            System.out.println("      no endpoints defined — skipping");
+            return true;
+        }
+
+        Process process = null;
+        try {
+            process = startApp();
+            if (!waitForReady(process)) {
+                System.out.println("      app failed to start. See " + projectDir.resolve(".startup.log"));
+                return false;
+            }
+
+            boolean allPassed = true;
+            try (HttpClient client = HttpClient.newBuilder()
+                    .connectTimeout(Duration.ofSeconds(5))
+                    .build()) {
+                for (EndpointCheck ep : endpoints) {
+                    if (!process.isAlive()) {
+                        System.out.println("      app process died mid-test");
+                        return false;
+                    }
+                    boolean ok = testEndpoint(client, ep);
+                    if (!ok) allPassed = false;
+                }
+            }
+            return allPassed;
 
         } catch (Exception e) {
             dumpStartupLog(startupLog, e.getMessage());
