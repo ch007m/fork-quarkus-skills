@@ -26,6 +26,7 @@ public class MigrationResult {
     private int toolCalls;
     private long inputTokens;
     private long outputTokens;
+    private long thinkingTokens;
     private long cacheRead;
     private long cacheWrite;
     private List<String> sessionFiles;
@@ -104,6 +105,9 @@ public class MigrationResult {
     public long getOutputTokens() { return outputTokens; }
     public void setOutputTokens(long outputTokens) { this.outputTokens = outputTokens; }
 
+    public long getThinkingTokens() { return thinkingTokens; }
+    public void setThinkingTokens(long thinkingTokens) { this.thinkingTokens = thinkingTokens; }
+
     public long getCacheRead() { return cacheRead; }
     public void setCacheRead(long cacheRead) { this.cacheRead = cacheRead; }
 
@@ -171,7 +175,7 @@ public class MigrationResult {
         sb.append("  skill-path: %s\n".formatted(skillRef.localPath()));
         sb.append("  duration: %ds\n".formatted(getDuration().toSeconds()));
         sb.append("  tokens:   %d\n".formatted(totalTokens));
-        sb.append("  cost:     $%.4f\n".formatted(totalCost));
+        sb.append(String.format(java.util.Locale.US, "  cost:     $%.4f\n", totalCost));
         sb.append("  calls:    %d\n".formatted(apiCalls));
         sb.append("  tools:    %d\n".formatted(toolCalls));
         sb.append("  checks:\n");

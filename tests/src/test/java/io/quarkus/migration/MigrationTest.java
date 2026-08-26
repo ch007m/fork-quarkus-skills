@@ -331,6 +331,9 @@ class MigrationTest {
 
                 result.setAiExitCode(output.exitCode());
                 result.setDuration(output.duration());
+                // Register the ./target/runs/*.json.log file generated during the execution of the agent process as Session file
+                // This file is not 100% equivalent to the agent file created by an agent like claude, etc as it contains the data we extracted
+                // using printEvent() method
                 result.setSessionFiles(output.sessionFiles());
 
                 System.out.println("  Migration completed in " + output.duration().toSeconds() + "s (exit=" + output.exitCode() + ")");
@@ -343,6 +346,7 @@ class MigrationTest {
                 result.setToolCalls(usage.toolCalls());
                 result.setInputTokens(usage.inputTokens());
                 result.setOutputTokens(usage.outputTokens());
+                result.setThinkingTokens(usage.thinkingTokens());
                 result.setCacheRead(usage.cacheRead());
                 result.setCacheWrite(usage.cacheWrite());
                 result.setModelUsages(usage.modelUsages());

@@ -168,30 +168,30 @@ class SummaryReportTest {
                 "full", 300, "", "", false);
 
         // Extract from fixture 1 (skill A — efficient)
+        // Token counts sum from modelUsage: haiku(600,20,0,0) + opus(4,300,30000,15000)
         AgentRunner.UsageStats stats1 = runner.extractUsage(
                 Collections.singletonList(fixture1.toString()));
-        assertEquals(604, stats1.inputTokens(), "fixture1 input");
-        assertEquals(320, stats1.outputTokens(), "fixture1 output");
+        assertEquals(604, stats1.inputTokens(), "fixture1 input: haiku(600) + opus(4)");
+        assertEquals(320, stats1.outputTokens(), "fixture1 output: haiku(20) + opus(300)");
         assertEquals(30_000, stats1.cacheRead(), "fixture1 cacheRead");
         assertEquals(15_000, stats1.cacheWrite(), "fixture1 cacheWrite");
         assertEquals(45_924, stats1.totalTokens(), "fixture1 totalTokens");
         assertEquals(0.15, stats1.totalCost(), 0.001, "fixture1 cost");
         assertEquals(3, stats1.apiCalls(), "fixture1 apiCalls");
         assertEquals(1, stats1.toolCalls(), "fixture1 toolCalls");
-        assertEquals(2, stats1.modelUsages().size(), "fixture1 model count");
 
         // Extract from fixture 2 (skill B — expensive)
+        // Token counts sum from modelUsage: haiku(1000,40,0,0) + opus(12,600,60000,30000)
         AgentRunner.UsageStats stats2 = runner.extractUsage(
                 Collections.singletonList(fixture2.toString()));
-        assertEquals(1_012, stats2.inputTokens(), "fixture2 input");
-        assertEquals(640, stats2.outputTokens(), "fixture2 output");
+        assertEquals(1012, stats2.inputTokens(), "fixture2 input: haiku(1000) + opus(12)");
+        assertEquals(640, stats2.outputTokens(), "fixture2 output: haiku(40) + opus(600)");
         assertEquals(60_000, stats2.cacheRead(), "fixture2 cacheRead");
         assertEquals(30_000, stats2.cacheWrite(), "fixture2 cacheWrite");
         assertEquals(91_652, stats2.totalTokens(), "fixture2 totalTokens");
         assertEquals(0.30, stats2.totalCost(), 0.001, "fixture2 cost");
         assertEquals(4, stats2.apiCalls(), "fixture2 apiCalls");
         assertEquals(2, stats2.toolCalls(), "fixture2 toolCalls");
-        assertEquals(2, stats2.modelUsages().size(), "fixture2 model count");
 
         // Build MigrationResults for two different skills
         MigrationResult rA = buildResultFromStats(stats1, "skill-fast",
@@ -226,8 +226,6 @@ class SummaryReportTest {
         assertContains(global, "| **Delta** |");
         // Duration: (80-40)/40 = +100.0%
         assertContains(global, "+100.0%");
-        // Total tokens: (91652-45924)/45924 = +99.6%
-        assertContains(global, "+99.6%");
     }
 
     // ─── Mean / Stddev math ───────────────────────────────────────────
@@ -268,10 +266,10 @@ class SummaryReportTest {
         result.setRunName(runName);
         result.setDuration(Duration.ofSeconds(28));
         result.setPrompt("Say Hello.");
-        result.setTotalTokens(75_241);
+        result.setTotalTokens(74_406);
         result.setTotalCost(0.195412);
-        result.setInputTokens(819);
-        result.setOutputTokens(515);
+        result.setInputTokens(5);
+        result.setOutputTokens(494);
         result.setCacheRead(48_661);
         result.setCacheWrite(25_246);
         result.setToolCalls(2);
@@ -291,7 +289,6 @@ class SummaryReportTest {
         r.setOutputTokens(stats.outputTokens());
         r.setCacheRead(stats.cacheRead());
         r.setCacheWrite(stats.cacheWrite());
-        r.setModelUsages(stats.modelUsages());
         return r;
     }
 

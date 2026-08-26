@@ -243,17 +243,44 @@ public class ClaudeRunner extends AbstractRunner implements AgentRunner {
             }
 
             case "result" -> {
-                JsonNode usage = event.path("usage");
-                long inputTokens = usage.path("input_tokens").asLong(0);
-                long outputTokens = usage.path("output_tokens").asLong(0);
-                long cacheRead = usage.path("cache_read_input_tokens").asLong(0);
-                long cacheWrite = usage.path("cache_creation_input_tokens").asLong(0);
-                long total = inputTokens + outputTokens + cacheRead + cacheWrite;
-                double cost = event.path("total_cost").asDouble(event.path("cost_usd").asDouble(0));
+                JsonNode modelUsageNode = event.path("modelUsage");
+                long totalInput = 0, totalOutput = 0, totalCacheRead = 0, totalCacheWrite = 0;
+                double totalCostUsd = 0;
 
+                if (modelUsageNode.isObject() && modelUsageNode.size() > 0) {
+                    var fields = modelUsageNode.fields();
+                    while (fields.hasNext()) {
+                        var entry = fields.next();
+                        String modelName = entry.getKey();
+                        JsonNode mu = entry.getValue();
+                        long inp = mu.path("inputTokens").asLong(0);
+                        long out = mu.path("outputTokens").asLong(0);
+                        long cr = mu.path("cacheReadInputTokens").asLong(0);
+                        long cw = mu.path("cacheCreationInputTokens").asLong(0);
+                        double cost = mu.path("costUSD").asDouble(0);
+                        totalInput += inp;
+                        totalOutput += out;
+                        totalCacheRead += cr;
+                        totalCacheWrite += cw;
+                        totalCostUsd += cost;
+
+                        printBoth(String.format(
+                                "  │ %s  [in: %d, out: %d, cache-r: %d, cache-w: %d, cost: $%.4f]",
+                                modelName, inp, out, cr, cw, cost), prettyWriter);
+                    }
+                } else {
+                    JsonNode usage = event.path("usage");
+                    totalInput = usage.path("input_tokens").asLong(0);
+                    totalOutput = usage.path("output_tokens").asLong(0);
+                    totalCacheRead = usage.path("cache_read_input_tokens").asLong(0);
+                    totalCacheWrite = usage.path("cache_creation_input_tokens").asLong(0);
+                    totalCostUsd = event.path("total_cost").asDouble(event.path("cost_usd").asDouble(0));
+                }
+
+                long total = totalInput + totalOutput + totalCacheRead + totalCacheWrite;
                 String info = String.format(
                         "  └── result  [tokens: %d (in: %d, out: %d, cache-r: %d, cache-w: %d), cost: $%.4f]",
-                        total, inputTokens, outputTokens, cacheRead, cacheWrite, cost);
+                        total, totalInput, totalOutput, totalCacheRead, totalCacheWrite, totalCostUsd);
                 printBoth(info, prettyWriter);
             }
 
@@ -267,12 +294,12 @@ public class ClaudeRunner extends AbstractRunner implements AgentRunner {
             return new UsageStats(0, 0.0, 0, "unknown");
         }
 
-        long inputTotal = 0, outputTotal = 0, cacheReadTotal = 0, cacheWriteTotal = 0;
+        long inputTotal = 0, outputTotal = 0, thinkingTotal = 0, cacheReadTotal = 0, cacheWriteTotal = 0;
         double totalCost = 0.0;
         int apiCalls = 0;
         int toolCalls = 0;
         String actualModel = model != null ? model : "unknown";
-        List<ModelUsage> perModelUsages = new ArrayList<>();
+        List<ModelUsage> modelUsages = new ArrayList<>();
 
         for (String sessionFile : sessionFiles) {
             if (sessionFile == null)
@@ -295,36 +322,42 @@ public class ClaudeRunner extends AbstractRunner implements AgentRunner {
                                 }
                             }
                         } else if ("result".equals(type)) {
-                            // Sum across all models in modelUsage for accurate totals
-                            JsonNode modelUsage = event.path("modelUsage");
-                            if (modelUsage.isObject()) {
-                                perModelUsages = new ArrayList<>();
-                                var fields = modelUsage.fields();
+                            JsonNode modelUsageNode = event.path("modelUsage");
+                            if (modelUsageNode.isObject() && modelUsageNode.size() > 0) {
+                                var fields = modelUsageNode.fields();
                                 while (fields.hasNext()) {
                                     var entry = fields.next();
+                                    String modelName = entry.getKey();
                                     JsonNode mu = entry.getValue();
-                                    long muIn = mu.path("inputTokens").asLong(0);
-                                    long muOut = mu.path("outputTokens").asLong(0);
-                                    long muCR = mu.path("cacheReadInputTokens").asLong(0);
-                                    long muCW = mu.path("cacheCreationInputTokens").asLong(0);
+                                    long muInput = mu.path("inputTokens").asLong(0);
+                                    long muOutput = mu.path("outputTokens").asLong(0);
+                                    long muCacheRead = mu.path("cacheReadInputTokens").asLong(0);
+                                    long muCacheWrite = mu.path("cacheCreationInputTokens").asLong(0);
                                     double muCost = mu.path("costUSD").asDouble(0);
-                                    inputTotal += muIn;
-                                    outputTotal += muOut;
-                                    cacheReadTotal += muCR;
-                                    cacheWriteTotal += muCW;
-                                    perModelUsages.add(new ModelUsage(
-                                            entry.getKey(), muIn, muOut, muCR, muCW, muCost));
+
+                                    inputTotal += muInput;
+                                    outputTotal += muOutput;
+                                    cacheReadTotal += muCacheRead;
+                                    cacheWriteTotal += muCacheWrite;
+                                    totalCost += muCost;
+
+                                    modelUsages.add(new ModelUsage(
+                                            modelName, muInput, muOutput, muCacheRead, muCacheWrite, muCost));
                                 }
                             } else {
                                 JsonNode usage = event.path("usage");
-                                inputTotal = usage.path("input_tokens").asLong(0);
-                                outputTotal = usage.path("output_tokens").asLong(0);
-                                cacheReadTotal = usage.path("cache_read_input_tokens").asLong(0);
-                                cacheWriteTotal = usage.path("cache_creation_input_tokens").asLong(0);
+                                inputTotal += usage.path("input_tokens").asLong(0);
+                                outputTotal += usage.path("output_tokens").asLong(0);
+                                cacheReadTotal += usage.path("cache_read_input_tokens").asLong(0);
+                                cacheWriteTotal += usage.path("cache_creation_input_tokens").asLong(0);
+
+                                totalCost = event.path("total_cost_usd").asDouble(
+                                        event.path("total_cost").asDouble(
+                                                event.path("cost_usd").asDouble(0)));
                             }
-                            totalCost = event.path("total_cost_usd").asDouble(
-                                    event.path("total_cost").asDouble(
-                                            event.path("cost_usd").asDouble(0)));
+
+                            thinkingTotal += event.path("usage").path("output_tokens_details")
+                                    .path("thinking_tokens").asLong(0);
 
                             String m = event.path("model").asText("");
                             if (!m.isEmpty())
@@ -339,7 +372,7 @@ public class ClaudeRunner extends AbstractRunner implements AgentRunner {
 
         long totalTokens = inputTotal + outputTotal + cacheReadTotal + cacheWriteTotal;
         return new UsageStats(totalTokens, totalCost, apiCalls, toolCalls, actualModel,
-                inputTotal, outputTotal, cacheReadTotal, cacheWriteTotal, perModelUsages);
+                inputTotal, outputTotal, thinkingTotal, cacheReadTotal, cacheWriteTotal, modelUsages);
     }
 
     @Override
@@ -447,19 +480,13 @@ public class ClaudeRunner extends AbstractRunner implements AgentRunner {
         }
         readerThread.join(5000);
 
-        Duration duration = Duration.between(start, Instant.now());
-
-        UsageStats reviewUsage = extractUsage(Collections.singletonList(sessionFile));
-
         String review = reviewText.toString().trim();
         Files.writeString(reviewFile, review);
 
         System.out.println();
-        System.out.printf("  Review: %ds, %d tokens, $%.4f%n",
-                duration.toSeconds(), reviewUsage.totalTokens(), reviewUsage.totalCost());
-        System.out.println("  Saved:  " + reviewFile);
+        System.out.println("  SKILL Review saved:  " + reviewFile);
         System.out.println("  ─────────────────────────────────────────────────────────");
 
-        return new ReviewOutput(review, reviewUsage);
+        return new ReviewOutput(review, new UsageStats(0, 0, 0, "unknown"));
     }
 }

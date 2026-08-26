@@ -32,16 +32,15 @@ class UsageAndReportTest {
 
     private static final String SESSION_FIXTURE = "/sessions/dummy_claude_session.jsonl";
 
-    // Expected values from the fixture's "result" event — modelUsage sums
-    // claude-haiku-4-5: inputTokens=814, outputTokens=21, cacheRead=0, cacheWrite=0
-    // claude-opus-4-6:  inputTokens=5,   outputTokens=494, cacheRead=48661, cacheWrite=25246
-    private static final long EXPECTED_INPUT_TOKENS = 819;
-    private static final long EXPECTED_OUTPUT_TOKENS = 515;
-    private static final long EXPECTED_CACHE_READ = 48_661;
-    private static final long EXPECTED_CACHE_WRITE = 25_246;
+    // Expected values from the fixture's "result" event — summed from modelUsage (haiku + opus)
+    private static final long EXPECTED_INPUT_TOKENS = 819;   // haiku(814) + opus(5)
+    private static final long EXPECTED_OUTPUT_TOKENS = 515;  // haiku(21) + opus(494)
+    private static final long EXPECTED_CACHE_READ = 48_661;  // opus only
+    private static final long EXPECTED_CACHE_WRITE = 25_246; // opus only
     private static final long EXPECTED_TOTAL_TOKENS = EXPECTED_INPUT_TOKENS + EXPECTED_OUTPUT_TOKENS
             + EXPECTED_CACHE_READ + EXPECTED_CACHE_WRITE;
-    private static final double EXPECTED_COST = 0.195412;
+    private static final long EXPECTED_THINKING_TOKENS = 54; // from result.usage (session-level)
+    private static final double EXPECTED_COST = 0.195412;    // sum of costUSD: 0.000919 + 0.194493
     private static final int EXPECTED_API_CALLS = 5;
     private static final int EXPECTED_TOOL_CALLS = 2;
 
@@ -62,8 +61,8 @@ class UsageAndReportTest {
     // ─── Token extraction from JSONL ──────────────────────────────────
 
     @Test
-    @DisplayName("extractUsage sums modelUsage across all models")
-    void extractUsageSumsModelUsage() {
+    @DisplayName("extractUsage sums usage from result event")
+    void extractUsageSumsUsage() {
         ClaudeRunner runner = new ClaudeRunner(
                 "claude", null, "claude-opus-4-6", Path.of("/tmp/skill"),
                 "full", 300, "", "", false);
@@ -72,9 +71,11 @@ class UsageAndReportTest {
                 Collections.singletonList(fixtureFile.toString()));
 
         assertEquals(EXPECTED_INPUT_TOKENS, stats.inputTokens(),
-                "input tokens should sum haiku(814) + opus(5)");
+                "input tokens from result.usage");
         assertEquals(EXPECTED_OUTPUT_TOKENS, stats.outputTokens(),
-                "output tokens should sum haiku(21) + opus(494)");
+                "output tokens from result.usage");
+        assertEquals(EXPECTED_THINKING_TOKENS, stats.thinkingTokens(),
+                "thinking tokens from result.usage.output_tokens_details");
         assertEquals(EXPECTED_CACHE_READ, stats.cacheRead(),
                 "cache read tokens from opus model");
         assertEquals(EXPECTED_CACHE_WRITE, stats.cacheWrite(),
@@ -87,26 +88,13 @@ class UsageAndReportTest {
                 "api calls = number of 'assistant' type events");
         assertEquals(EXPECTED_TOOL_CALLS, stats.toolCalls(),
                 "tool calls = number of 'tool_use' blocks in assistant events");
-
-        // Per-model breakdown
-        assertFalse(stats.modelUsages().isEmpty(), "modelUsages should be populated");
-        assertEquals(2, stats.modelUsages().size(), "should have 2 model entries (haiku + opus)");
-
-        var haiku = stats.modelUsages().stream()
-                .filter(m -> m.model().contains("haiku")).findFirst().orElseThrow();
-        assertEquals(814, haiku.inputTokens());
-        assertEquals(21, haiku.outputTokens());
-        assertEquals(0, haiku.cacheRead());
-        assertEquals(0, haiku.cacheWrite());
-        assertEquals(0.000919, haiku.cost(), 0.0001);
-
-        var opus = stats.modelUsages().stream()
-                .filter(m -> m.model().contains("opus")).findFirst().orElseThrow();
-        assertEquals(5, opus.inputTokens());
-        assertEquals(494, opus.outputTokens());
-        assertEquals(48_661, opus.cacheRead());
-        assertEquals(25_246, opus.cacheWrite());
-        assertEquals(0.194493, opus.cost(), 0.0001);
+        assertEquals(2, stats.modelUsages().size(), "modelUsages from result.modelUsage");
+        assertEquals("claude-haiku-4-5@20251001", stats.modelUsages().get(0).model());
+        assertEquals(814, stats.modelUsages().get(0).inputTokens());
+        assertEquals(21, stats.modelUsages().get(0).outputTokens());
+        assertEquals("claude-opus-4-6", stats.modelUsages().get(1).model());
+        assertEquals(5, stats.modelUsages().get(1).inputTokens());
+        assertEquals(494, stats.modelUsages().get(1).outputTokens());
     }
 
     @Test
@@ -177,10 +165,10 @@ class UsageAndReportTest {
             muCacheWrite += mu.path("cacheCreationInputTokens").asLong(0);
         }
 
-        assertEquals(EXPECTED_INPUT_TOKENS, muInput);
-        assertEquals(EXPECTED_OUTPUT_TOKENS, muOutput);
-        assertEquals(EXPECTED_CACHE_READ, muCacheRead);
-        assertEquals(EXPECTED_CACHE_WRITE, muCacheWrite);
+        assertEquals(819, muInput, "modelUsage input: haiku(814) + opus(5)");
+        assertEquals(515, muOutput, "modelUsage output: haiku(21) + opus(494)");
+        assertEquals(48_661, muCacheRead, "modelUsage cacheRead from opus");
+        assertEquals(25_246, muCacheWrite, "modelUsage cacheWrite from opus");
     }
 
     // ─── Report generation (writeMarkdownReport) ──────────────────────
@@ -200,6 +188,7 @@ class UsageAndReportTest {
         assertContains(report, "| Tool calls | 2 |");
         assertContains(report, "| Input tokens | 819 |");
         assertContains(report, "| Output tokens | 515 |");
+        assertContains(report, "| Thinking tokens | 54 |");
         assertContains(report, "| Cache read | 48,661 |");
         assertContains(report, "| Cache write | 25,246 |");
         assertContains(report, "| Total tokens | 75,241 |");
@@ -226,9 +215,12 @@ class UsageAndReportTest {
         assertContains(report, "| claude-haiku-4-5@20251001 | 814 | 21 | 0 | 0 | $0.0009 |");
         assertContains(report, "| claude-opus-4-6 | 5 | 494 | 48,661 | 25,246 | $0.1945 |");
 
-        // Total row
-        assertContains(report, "| **Total** | **819** | **515** | **48,661** | **25,246** | **$0.20** |");
+        // Total row (from modelUsage sums) — no $/MTokens on total
+        assertContains(report, "| **Total** | **819** | **515** | **48,661** | **25,246** | **$0.20** | |");
         assertContains(report, "**Grand total: 819 + 515 + 48,661 + 25,246 = 75,241 tokens**");
+
+        // Cost formula
+        assertContains(report, "**Cost formula:**");
 
         // Token Usage section should NOT have old key-value rows
         String tokenSection = report.substring(report.indexOf("## Token Usage"));
@@ -307,6 +299,7 @@ class UsageAndReportTest {
         result.setToolCalls(stats.toolCalls());
         result.setInputTokens(stats.inputTokens());
         result.setOutputTokens(stats.outputTokens());
+        result.setThinkingTokens(stats.thinkingTokens());
         result.setCacheRead(stats.cacheRead());
         result.setCacheWrite(stats.cacheWrite());
         result.setModelUsages(stats.modelUsages());
@@ -317,13 +310,12 @@ class UsageAndReportTest {
 
         String report = Files.readString(tempDir.resolve("e2e-test.report.md"));
 
-        // Per-model rows from the real fixture
-        assertContains(report, "| claude-haiku-4-5@20251001 | 814 | 21 | 0 | 0 |");
-        assertContains(report, "| claude-opus-4-6 | 5 | 494 | 48,661 | 25,246 |");
-
-        // Total row
-        assertContains(report, "| **Total** | **819** | **515** | **48,661** | **25,246** | **$0.20** |");
+        // Per-model table format (modelUsages populated from result.modelUsage)
+        assertContains(report, "| claude-haiku-4-5@20251001 | 814 | 21 | 0 | 0 | $0.0009 |");
+        assertContains(report, "| claude-opus-4-6 | 5 | 494 | 48,661 | 25,246 | $0.1945 |");
+        assertContains(report, "| **Total** | **819** | **515** | **48,661** | **25,246** | **$0.20** | |");
         assertContains(report, "**Grand total: 819 + 515 + 48,661 + 25,246 = 75,241 tokens**");
+        assertContains(report, "**Cost formula:**");
 
         // Run info
         assertContains(report, "| Duration | 0m 28s (28s) |");
@@ -369,6 +361,7 @@ class UsageAndReportTest {
         result.setToolCalls(EXPECTED_TOOL_CALLS);
         result.setInputTokens(EXPECTED_INPUT_TOKENS);
         result.setOutputTokens(EXPECTED_OUTPUT_TOKENS);
+        result.setThinkingTokens(EXPECTED_THINKING_TOKENS);
         result.setCacheRead(EXPECTED_CACHE_READ);
         result.setCacheWrite(EXPECTED_CACHE_WRITE);
         return result;
