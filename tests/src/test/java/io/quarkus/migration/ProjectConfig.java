@@ -13,8 +13,19 @@ public record ProjectConfig(
         String source,
         String ref,
         int timeout,
+        TestConfig test,
         List<String> checks
 ) {
+    public record TestConfig(Boolean enabled) {
+        public TestConfig {
+            if (enabled == null) enabled = true;
+        }
+    }
+
+    public boolean isTestEnabled() {
+        return test == null || test.enabled();
+    }
+
     public boolean isLocal() {
         return "local".equals(source);
     }

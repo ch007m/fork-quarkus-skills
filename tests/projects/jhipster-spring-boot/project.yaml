@@ -1,0 +1,8 @@
+name: jhipster-spring-boot
+description: jhipster Spring Boot Sample Application
+type: spring-boot
+source: local
+timeout: 900
+skill: migrate-spring-to-quarkus
+test:
+  enabled: false
