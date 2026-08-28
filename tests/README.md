@@ -227,7 +227,7 @@ mvn test \
 
 ## Benchmark: comparing skills
 
-Use `-Dai.skills` to benchmark up to 2 skills against one or more projects. Each skill is run independently with its own set of runs, and a global summary report with delta comparison is generated at the end.
+Use `-Dai.skills` to benchmark up to 2 skills against one or more projects. Each skill is run independently with its own set of runs, and a benchmark summary report with delta comparison is generated at the end.
 
 ### Single project, 2 skills
 
@@ -266,9 +266,9 @@ mvn test \
 When benchmarking with 2 skills, the harness generates:
 
 - **Per-skill summary** (`target/runs/<project>_<skill>_*.summary.md`) — averages across runs for each skill+project combination
-- **Global summary** (`target/runs/global.summary.md`) — side-by-side comparison with a delta row showing the percentage difference between the two skills
+- **Benchmark summary** (`target/runs/beanchmark-report.md`) — side-by-side comparison with a delta row showing the percentage difference between the two skills for tokens, tools, etc
 
-Example global summary output:
+Example of benchmark output:
 
 ```
 | Skill | mtool? | Runs | Avg Duration | Avg Input | Avg Output | Avg Cache Read | Avg Total Tokens | Avg Cost |

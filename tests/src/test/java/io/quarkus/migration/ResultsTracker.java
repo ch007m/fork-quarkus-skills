@@ -230,10 +230,83 @@ public class ResultsTracker {
         }
     }
 
-    public void writeSummaryReport(List<MigrationResult> results, String baseRunName) {
+
+    public void writeBenchmarkComparisonReport(Map<String, List<MigrationResult>> resultsBySkill) {
+        List<String> skillNames = new ArrayList<>(resultsBySkill.keySet());
+        String titleSkills = String.join(" vs ", skillNames);
+        Path summaryFile = historyFile.getParent().resolve("benchmark-report.md");
+
+        var sb = new StringBuilder();
+        sb.append("# Benchmark report and comparison: %s\n\n".formatted(titleSkills));
+
+        sb.append("## Global Summary\n\n");
+        sb.append("| Skill | Runs | Avg Duration | Avg Tool calls | Avg Input | Avg Output | Avg Cache Read | Avg Cache Write | Avg Total Tokens | Avg Cost | Avg $/MTokens |\n");
+        sb.append("|---|---|---|---|---|---|---|---|---|---|---|\n");
+
+        var skillAvgs = new ArrayList<double[]>();
+
+        for (var entry : resultsBySkill.entrySet()) {
+            String skillName = entry.getKey();
+            List<MigrationResult> results = entry.getValue();
+            int runs = results.size();
+
+            double[] durations = results.stream().mapToDouble(r -> r.getDuration().toSeconds()).toArray();
+            double[] gTools = results.stream().mapToDouble(MigrationResult::getToolCalls).toArray();
+            double[] inputs = results.stream().mapToDouble(MigrationResult::getInputTokens).toArray();
+            double[] outputs = results.stream().mapToDouble(MigrationResult::getOutputTokens).toArray();
+            double[] cacheReads = results.stream().mapToDouble(MigrationResult::getCacheRead).toArray();
+            double[] cacheWrites = results.stream().mapToDouble(MigrationResult::getCacheWrite).toArray();
+            double[] totals = results.stream().mapToDouble(MigrationResult::getTotalTokens).toArray();
+            double[] costs = results.stream().mapToDouble(MigrationResult::getTotalCost).toArray();
+            double[] gRates = results.stream().mapToDouble(r ->
+                    r.getTotalTokens() > 0 ? r.getTotalCost() / r.getTotalTokens() * 1_000_000 : 0).toArray();
+
+            sb.append("| %s | %d | %s | %s | %s | %s | %s | %s | %s | %s | %s |\n".formatted(
+                    skillName, runs,
+                    formatDurationWithStddev(durations),
+                    formatIntWithStddev(gTools),
+                    formatTokensWithStddev(inputs), formatTokensWithStddev(outputs),
+                    formatTokensWithStddev(cacheReads), formatTokensWithStddev(cacheWrites),
+                    formatTokensWithStddev(totals), formatCostWithStddev(costs),
+                    formatRateWithStddev(gRates)));
+
+            skillAvgs.add(new double[]{
+                    mean(durations), mean(gTools), mean(inputs), mean(outputs),
+                    mean(cacheReads), mean(cacheWrites), mean(totals), mean(costs),
+                    mean(gRates)
+            });
+        }
+
+        if (resultsBySkill.size() == 2) {
+            double[] a = skillAvgs.get(0);
+            double[] b = skillAvgs.get(1);
+
+            sb.append("| **Delta** | — ");
+            for (int i = 0; i < a.length; i++) {
+                if (a[i] == 0) {
+                    sb.append("| — ");
+                } else {
+                    double pct = (b[i] - a[i]) / a[i] * 100;
+                    sb.append(String.format(Locale.US, "| %+.1f%% ", pct));
+                }
+            }
+            sb.append("|\n");
+        }
+
+        sb.append("\n");
+
+        try {
+            Files.writeString(summaryFile, sb.toString());
+            System.out.println("  Global summary: " + summaryFile);
+        } catch (IOException e) {
+            System.err.println("Failed to write global summary: " + e.getMessage());
+        }
+    }
+
+    public void writeSkillSummaryReport(List<MigrationResult> results, String baseRunName) {
         if (results == null || results.isEmpty()) return;
 
-        Path summaryFile = historyFile.getParent().resolve(baseRunName + ".summary.md");
+        Path summaryFile = historyFile.getParent().resolve(baseRunName + "-report.md");
         int n = results.size();
 
         double[] durations = results.stream().mapToDouble(r -> r.getDuration().toSeconds()).toArray();
@@ -366,79 +439,4 @@ public class ResultsTracker {
         return String.valueOf(n);
     }
 
-    public void writeGlobalSummary(Map<String, List<MigrationResult>> resultsBySkill) {
-        List<String> skillNames = new ArrayList<>(resultsBySkill.keySet());
-        String titleSkills = String.join(" vs ", skillNames);
-        Path summaryFile = historyFile.getParent().resolve("global.summary.md");
-
-        var sb = new StringBuilder();
-        sb.append("# Report benchmark and comparison: %s\n\n".formatted(titleSkills));
-
-        sb.append("## Global Summary\n\n");
-        sb.append("| Skill | Runs | Avg Duration | Avg Tool calls | Avg Input | Avg Output | Avg Cache Read | Avg Cache Write | Avg Total Tokens | Avg Cost | Avg $/MTokens |\n");
-        sb.append("|---|---|---|---|---|---|---|---|---|---|---|\n");
-
-        var skillAvgs = new ArrayList<double[]>();
-
-        for (var entry : resultsBySkill.entrySet()) {
-            String skillName = entry.getKey();
-            List<MigrationResult> results = entry.getValue();
-            int runs = results.size();
-
-            double[] durations = results.stream().mapToDouble(r -> r.getDuration().toSeconds()).toArray();
-            double[] gTools = results.stream().mapToDouble(MigrationResult::getToolCalls).toArray();
-            double[] inputs = results.stream().mapToDouble(MigrationResult::getInputTokens).toArray();
-            double[] outputs = results.stream().mapToDouble(MigrationResult::getOutputTokens).toArray();
-            double[] cacheReads = results.stream().mapToDouble(MigrationResult::getCacheRead).toArray();
-            double[] cacheWrites = results.stream().mapToDouble(MigrationResult::getCacheWrite).toArray();
-            double[] totals = results.stream().mapToDouble(MigrationResult::getTotalTokens).toArray();
-            double[] costs = results.stream().mapToDouble(MigrationResult::getTotalCost).toArray();
-            double[] gRates = results.stream().mapToDouble(r ->
-                    r.getTotalTokens() > 0 ? r.getTotalCost() / r.getTotalTokens() * 1_000_000 : 0).toArray();
-
-            sb.append("| %s | %d | %s | %s | %s | %s | %s | %s | %s | %s | %s |\n".formatted(
-                    skillName, runs,
-                    formatDurationWithStddev(durations),
-                    formatIntWithStddev(gTools),
-                    formatTokensWithStddev(inputs), formatTokensWithStddev(outputs),
-                    formatTokensWithStddev(cacheReads), formatTokensWithStddev(cacheWrites),
-                    formatTokensWithStddev(totals), formatCostWithStddev(costs),
-                    formatRateWithStddev(gRates)));
-
-            skillAvgs.add(new double[]{
-                    mean(durations), mean(gTools), mean(inputs), mean(outputs),
-                    mean(cacheReads), mean(cacheWrites), mean(totals), mean(costs),
-                    mean(gRates)
-            });
-        }
-
-        if (resultsBySkill.size() == 2) {
-            double[] a = skillAvgs.get(0);
-            double[] b = skillAvgs.get(1);
-
-            sb.append("| **Delta** | — ");
-            for (int i = 0; i < a.length; i++) {
-                if (a[i] == 0) {
-                    sb.append("| — ");
-                } else {
-                    double pct = (b[i] - a[i]) / a[i] * 100;
-                    sb.append(String.format(Locale.US, "| %+.1f%% ", pct));
-                }
-            }
-            sb.append("|\n");
-        }
-
-        sb.append("\n");
-
-        try {
-            Files.writeString(summaryFile, sb.toString());
-            System.out.println("  Global summary: " + summaryFile);
-        } catch (IOException e) {
-            System.err.println("Failed to write global summary: " + e.getMessage());
-        }
-    }
-
-    public Path getHistoryFile() {
-        return historyFile;
-    }
 }

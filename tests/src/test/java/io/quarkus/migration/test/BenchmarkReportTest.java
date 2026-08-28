@@ -16,79 +16,16 @@ import java.util.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Validates the summary and global summary report generation:
- * averages, stddev, delta percentages, and the end-to-end pipeline
- * from JSONL fixture files to global.summary.md.
+ * Validates the benchmark report content
  */
-class SummaryReportTest {
+class BenchmarkReportTest {
 
     @TempDir
     Path tempDir;
 
-    // ─── Summary report (writeSummaryReport) ──────────────────────────
-
     @Test
-    @DisplayName("writeSummaryReport computes correct averages and stddev for multiple runs")
-    void writeSummaryReportAvgStddev() throws IOException {
-        Path historyFile = tempDir.resolve("history.jsonl");
-        ResultsTracker tracker = new ResultsTracker(historyFile);
-
-        MigrationResult r1 = buildResult("dummy", "claude-opus-4-6", "run1");
-        r1.setDuration(Duration.ofSeconds(60));
-        r1.setTotalTokens(70_000);
-        r1.setTotalCost(0.50);
-        r1.setInputTokens(800);
-        r1.setOutputTokens(500);
-        r1.setCacheRead(45_000);
-        r1.setCacheWrite(23_700);
-
-        MigrationResult r2 = buildResult("dummy", "claude-opus-4-6", "run2");
-        r2.setDuration(Duration.ofSeconds(80));
-        r2.setTotalTokens(80_000);
-        r2.setTotalCost(0.70);
-        r2.setInputTokens(1000);
-        r2.setOutputTokens(600);
-        r2.setCacheRead(55_000);
-        r2.setCacheWrite(23_400);
-
-        tracker.writeSummaryReport(List.of(r1, r2), "summary-base");
-
-        String summary = Files.readString(tempDir.resolve("summary-base.summary.md"));
-
-        // Avg duration = 70s => 1m 10s, stddev = 10s
-        assertContains(summary, "1m 10s (+/- 10s)");
-
-        // Avg cost = $0.60, stddev = $0.10
-        assertContains(summary, "$0.60 (+/- $0.10)");
-
-        // Avg total tokens = 75,000, stddev = 5,000
-        assertContains(summary, "75,000 (+/- 5,000)");
-    }
-
-    @Test
-    @DisplayName("writeSummaryReport with single run has zero stddev")
-    void writeSummaryReportSingleRun() throws IOException {
-        Path historyFile = tempDir.resolve("history.jsonl");
-        ResultsTracker tracker = new ResultsTracker(historyFile);
-
-        MigrationResult r = buildResult("dummy", "claude-opus-4-6", "solo");
-        r.setDuration(Duration.ofSeconds(28));
-        r.setTotalTokens(75_241);
-        r.setTotalCost(0.195412);
-
-        tracker.writeSummaryReport(List.of(r), "solo-base");
-
-        String summary = Files.readString(tempDir.resolve("solo-base.summary.md"));
-
-        assertContains(summary, "0m 28s (+/- 0s)");
-        assertContains(summary, "$0.20 (+/- $0.00)");
-    }
-
-    // ─── Global summary (writeGlobalSummary) ──────────────────────────
-
-    @Test
-    @DisplayName("writeGlobalSummary computes delta percentages between two skills")
-    void writeGlobalSummaryDelta() throws IOException {
+    @DisplayName("writeBenchmarkReportAndCheckDelta creates a benchmark report and computes delta between two skills compared")
+    void writeBenchmarkReportAndCheckDelta() throws IOException {
         Path historyFile = tempDir.resolve("history.jsonl");
         ResultsTracker tracker = new ResultsTracker(historyFile);
 
@@ -114,25 +51,25 @@ class SummaryReportTest {
         bySkill.put("skills/skill-a", List.of(rA));
         bySkill.put("skills/skill-b", List.of(rB));
 
-        tracker.writeGlobalSummary(bySkill);
+        tracker.writeBenchmarkComparisonReport(bySkill);
 
-        String global = Files.readString(tempDir.resolve("global.summary.md"));
-        assertContains(global, "# Report benchmark and comparison:");
-        assertContains(global, "| **Delta** |");
+        String benchmark = Files.readString(tempDir.resolve("benchmark-report.md"));
+        assertContains(benchmark, "# Benchmark report and comparison:");
+        assertContains(benchmark, "| **Delta** |");
 
         // Duration delta: (78-66)/66 * 100 = +18.2%
-        assertContains(global, "+18.2%");
+        assertContains(benchmark, "+18.2%");
 
         // Total tokens delta: (446433-240654)/240654 * 100 = +85.5%
-        assertContains(global, "+85.5%");
+        assertContains(benchmark, "+85.5%");
 
         // Cost delta: (0.86-0.50)/0.50 * 100 = +72.0%
-        assertContains(global, "+72.0%");
+        assertContains(benchmark, "+72.0%");
     }
 
     @Test
-    @DisplayName("writeGlobalSummary with single skill produces no delta row")
-    void writeGlobalSummaryNoDelta() throws IOException {
+    @DisplayName("writeBenchmark with single skill produces no delta row")
+    void writeBenchmarkTestWithNoDelta() throws IOException {
         Path historyFile = tempDir.resolve("history.jsonl");
         ResultsTracker tracker = new ResultsTracker(historyFile);
 
@@ -141,18 +78,18 @@ class SummaryReportTest {
         r.setTotalTokens(240_654);
         r.setTotalCost(0.50);
 
-        Map<String, List<MigrationResult>> bySkill = Map.of("only-skill", List.of(r));
-        tracker.writeGlobalSummary(bySkill);
+        Map<String, List<MigrationResult>> bySkill = Map.of("single-skill", List.of(r));
+        tracker.writeBenchmarkComparisonReport(bySkill);
 
-        String global = Files.readString(tempDir.resolve("global.summary.md"));
+        String global = Files.readString(tempDir.resolve("benchmark-report.md"));
         assertFalse(global.contains("**Delta**"), "single-skill summary should not have a delta row");
     }
 
-    // ─── Global summary from fixture JSONL files ──────────────────────
+    // ─── Benchmark from fixture JSONL files ──────────────────────
 
     @Test
-    @DisplayName("end-to-end: two fixture sessions produce correct global.summary.md with delta")
-    void globalSummaryFromFixtures() throws IOException {
+    @DisplayName("end-to-end: two fixture sessions produce correct benchmark-report.md with delta")
+    void EndToEndTestFromFixtures() throws IOException {
         Path fixture1 = tempDir.resolve("session1.jsonl");
         Path fixture2 = tempDir.resolve("session2.jsonl");
         try (var in1 = getClass().getResourceAsStream("/sessions/dummy1_claude_session.jsonl");
@@ -199,33 +136,33 @@ class SummaryReportTest {
         MigrationResult rB = buildResultFromStats(stats2, "skill-thorough",
                 "/tmp/skillB", "dummy_skill-thorough", Duration.ofSeconds(80));
 
-        // Generate global summary
+        // Generate Benchmark report
         Path historyFile = tempDir.resolve("history.jsonl");
         ResultsTracker tracker = new ResultsTracker(historyFile);
 
         Map<String, List<MigrationResult>> bySkill = new LinkedHashMap<>();
         bySkill.put("skills/skill-fast", List.of(rA));
         bySkill.put("skills/skill-thorough", List.of(rB));
-        tracker.writeGlobalSummary(bySkill);
+        tracker.writeBenchmarkComparisonReport(bySkill);
 
-        String global = Files.readString(tempDir.resolve("global.summary.md"));
+        String benchmark = Files.readString(tempDir.resolve("benchmark-report.md"));
 
-        assertContains(global, "skills/skill-fast vs skills/skill-thorough");
+        assertContains(benchmark, "skills/skill-fast vs skills/skill-thorough");
 
         // Skill A row
-        assertContains(global, "| skills/skill-fast | 1 |");
-        assertContains(global, "45,924 (+/- 0)");
-        assertContains(global, "$0.15 (+/- $0.00)");
+        assertContains(benchmark, "| skills/skill-fast | 1 |");
+        assertContains(benchmark, "45,924 (+/- 0)");
+        assertContains(benchmark, "$0.15 (+/- $0.00)");
 
         // Skill B row
-        assertContains(global, "| skills/skill-thorough | 1 |");
-        assertContains(global, "91,652 (+/- 0)");
-        assertContains(global, "$0.30 (+/- $0.00)");
+        assertContains(benchmark, "| skills/skill-thorough | 1 |");
+        assertContains(benchmark, "91,652 (+/- 0)");
+        assertContains(benchmark, "$0.30 (+/- $0.00)");
 
         // Delta row
-        assertContains(global, "| **Delta** |");
+        assertContains(benchmark, "| **Delta** |");
         // Duration: (80-40)/40 = +100.0%
-        assertContains(global, "+100.0%");
+        assertContains(benchmark, "+100.0%");
     }
 
     // ─── Mean / Stddev math ───────────────────────────────────────────

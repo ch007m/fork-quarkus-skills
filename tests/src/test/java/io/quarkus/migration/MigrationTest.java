@@ -222,7 +222,7 @@ class MigrationTest {
         }
     }
 
-    private static final Map<String, List<MigrationResult>> globalResultsBySkill = new LinkedHashMap<>();
+    private static final Map<String, List<MigrationResult>> skillsComparisonResults = new LinkedHashMap<>();
 
     // -- the actual test --
 
@@ -296,7 +296,7 @@ class MigrationTest {
                 System.out.println("=".repeat(60));
             }
 
-            List<MigrationResult> skillResults = new ArrayList<>();
+            List<MigrationResult> skillResultRuns = new ArrayList<>();
 
             for (int run = 1; run <= totalRuns; run++) {
                 String runName = totalRuns > 1 ? baseRunName + "_run" + run : baseRunName;
@@ -386,20 +386,20 @@ class MigrationTest {
 
                 // 6. Record result
                 tracker.record(result);
-                skillResults.add(result);
+                skillResultRuns.add(result);
                 System.out.println("\n" + result);
 
                 lastFailures = failures;
                 lastScore = result.score();
             }
 
-            // 7. Write per-skill summary when multiple runs
+            // 7. Write per-skill report when multiple runs have been executed
             if (totalRuns > 1) {
-                tracker.writeSummaryReport(skillResults, baseRunName);
+                tracker.writeSkillSummaryReport(skillResultRuns, baseRunName);
             }
 
-            // Collect for global summary
-            globalResultsBySkill.computeIfAbsent(skillRefStr, k -> new ArrayList<>()).addAll(skillResults);
+            // Collect skillResultRuns about the Skills compared (max 2) for the benchmark report
+            skillsComparisonResults.computeIfAbsent(skillRefStr, k -> new ArrayList<>()).addAll(skillResultRuns);
         }
 
         // 8. Assert last run's checks passed (skip in benchmark mode to collect all results)
@@ -411,16 +411,16 @@ class MigrationTest {
     }
 
     @AfterAll
-    static void generateGlobalSummary() {
-        boolean multipleSkills = globalResultsBySkill.size() > 1;
-        boolean multipleProjects = globalResultsBySkill.values().stream()
+    static void generateBenchmarkReport() {
+        boolean multipleSkills = skillsComparisonResults.size() > 1;
+        boolean multipleProjects = skillsComparisonResults.values().stream()
                 .flatMap(List::stream)
                 .map(MigrationResult::getProject)
                 .distinct()
                 .count() > 1;
 
         if (multipleSkills || multipleProjects) {
-            tracker.writeGlobalSummary(globalResultsBySkill);
+            tracker.writeBenchmarkComparisonReport(skillsComparisonResults);
         }
     }
 
