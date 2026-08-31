@@ -89,7 +89,7 @@ class BenchmarkReportTest {
 
     @Test
     @DisplayName("end-to-end: two fixture sessions produce correct benchmark-report.md with delta")
-    void EndToEndTestFromFixtures() throws IOException {
+    void endToEndTestFromFixtures() throws IOException {
         Path fixture1 = tempDir.resolve("session1.jsonl");
         Path fixture2 = tempDir.resolve("session2.jsonl");
         try (var in1 = getClass().getResourceAsStream("/sessions/dummy1_claude_session.jsonl");
