@@ -10,6 +10,7 @@ checks:
   - tests-pass
   - no-spring-deps
   - has-quarkus
+  - starts-up
   - smoke-test
 
 endpoints:

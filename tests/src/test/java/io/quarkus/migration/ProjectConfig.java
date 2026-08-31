@@ -14,9 +14,8 @@ public record ProjectConfig(
         String ref,
         int timeout,
         List<String> checks,
-        List<EndpointCheck> endpoints
         TestConfig test,
-        List<String> checks
+        List<EndpointCheck> endpoints
 ) {
     public record TestConfig(Boolean enabled) {
         public TestConfig {

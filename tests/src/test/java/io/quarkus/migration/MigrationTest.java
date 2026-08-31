@@ -354,7 +354,7 @@ class MigrationTest {
                 // 4. Run checks
                 List<String> failures = new ArrayList<>();
                 if (hasChecks) {
-                    MigrationChecks checks = new MigrationChecks(workDir);
+                    MigrationChecks checks = new MigrationChecks(workDir, config.endpoints());
                     System.out.println("  Running checks...");
 
                     config.checks().forEach(check -> {

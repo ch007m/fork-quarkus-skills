@@ -90,6 +90,22 @@ public class MigrationChecks {
             }
             dumpStartupLog(startupLog, "timed out after 60s waiting for HTTP readiness on port " + port);
             return false;
+
+        } catch (Exception e) {
+            dumpStartupLog(startupLog, e.getMessage());
+            return false;
+        } finally {
+            if (process != null) {
+                process.descendants().forEach(ProcessHandle::destroyForcibly);
+                process.destroyForcibly();
+                try {
+                    process.waitFor(10, TimeUnit.SECONDS);
+                } catch (InterruptedException ignored) {
+                }
+            }
+        }
+    }
+
     /**
      * Start the app, hit each endpoint defined in project.yaml, and verify responses.
      * Implicitly verifies startup — projects using this check don't need starts-up separately.
@@ -100,11 +116,12 @@ public class MigrationChecks {
             return true;
         }
 
+        Path startupLog = projectDir.resolve(".startup.log");
         Process process = null;
         try {
             process = startApp();
             if (!waitForReady(process)) {
-                System.out.println("      app failed to start. See " + projectDir.resolve(".startup.log"));
+                dumpStartupLog(startupLog, "app failed to start");
                 return false;
             }
 
@@ -127,14 +144,7 @@ public class MigrationChecks {
             dumpStartupLog(startupLog, e.getMessage());
             return false;
         } finally {
-            if (process != null) {
-                process.descendants().forEach(ProcessHandle::destroyForcibly);
-                process.destroyForcibly();
-                try {
-                    process.waitFor(10, TimeUnit.SECONDS);
-                } catch (InterruptedException ignored) {
-                }
-            }
+            stopApp(process);
         }
     }
 
