@@ -266,7 +266,7 @@ mvn test \
 When benchmarking with 2 skills, the harness generates:
 
 - **Per-skill summary** (`target/runs/<project>_<skill>_*.summary.md`) — averages across runs for each skill+project combination
-- **Benchmark summary** (`target/runs/beanchmark-report.md`) — side-by-side comparison with a delta row showing the percentage difference between the two skills for tokens, tools, etc
+- **Benchmark summary** (`target/runs/benchmark-report.md`) — side-by-side comparison with a delta row showing the percentage difference between the two skills for tokens, tools, etc
 
 Example of benchmark output:
 
