@@ -297,7 +297,7 @@ public class ResultsTracker {
 
         try {
             Files.writeString(summaryFile, sb.toString());
-            System.out.println("  Global summary: " + summaryFile);
+            System.out.println("  Benchmark report: " + summaryFile);
         } catch (IOException e) {
             System.err.println("Failed to write global summary: " + e.getMessage());
         }
