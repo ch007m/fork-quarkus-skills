@@ -299,7 +299,7 @@ public class ResultsTracker {
             Files.writeString(summaryFile, sb.toString());
             System.out.println("  Benchmark report: " + summaryFile);
         } catch (IOException e) {
-            System.err.println("Failed to write global summary: " + e.getMessage());
+            System.err.println("Failed to write benchmark report: " + e.getMessage());
         }
     }
 
