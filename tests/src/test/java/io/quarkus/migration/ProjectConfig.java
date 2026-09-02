@@ -1,6 +1,7 @@
 package io.quarkus.migration;
 
-import java.util.List;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 /**
  * Maps to a project.yaml file defining a test project.
@@ -13,14 +14,20 @@ public record ProjectConfig(
         String source,
         String ref,
         int timeout,
-        List<String> checks,
-        TestConfig test,
-        List<EndpointCheck> endpoints
+        Map<String, CheckConfig> checks,
+        TestConfig test
 ) {
     public record TestConfig(Boolean enabled) {
         public TestConfig {
             if (enabled == null) enabled = true;
         }
+    }
+
+    public Map<String, CheckConfig> checks() {
+        if (checks == null) return Map.of();
+        var normalized = new LinkedHashMap<String, CheckConfig>();
+        checks.forEach((k, v) -> normalized.put(k, v == null ? new CheckConfig(null) : v));
+        return normalized;
     }
 
     public boolean isTestEnabled() {

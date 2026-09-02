@@ -6,19 +6,17 @@ source: local
 timeout: 900
 
 checks:
-  - builds
-  - tests-pass
-  - no-spring-deps
-  - has-quarkus
-  - starts-up
-  - smoke-test
-
-endpoints:
-  - path: /api/greetings
-    method: GET
-    expected_status: 200
-  - path: /api/greetings
-    method: POST
-    body: '{"name":"Test","message":"Hello from smoke test"}'
-    expected_status: 201
-    body_contains: '"name":"Test"'
+  builds:
+  tests-pass:
+  no-spring-deps:
+  has-quarkus:
+  smoke-test:
+    endpoints:
+      - path: /api/greetings
+        method: GET
+        expected_status: 200
+      - path: /api/greetings
+        method: POST
+        body: '{"name":"Test","message":"Hello from smoke test"}'
+        expected_status: 201
+        body_contains: '"name":"Test"'

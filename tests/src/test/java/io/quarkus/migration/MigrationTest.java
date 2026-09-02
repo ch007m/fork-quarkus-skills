@@ -253,7 +253,7 @@ class MigrationTest {
         System.out.println("  provider: " + (provider.isEmpty() ? "(n/a)" : provider));
         System.out.println("  model:    " + model);
         System.out.println("  timeout:  " + aiTimeout() + "s");
-        System.out.println("  checks:   " + (hasChecks ? config.checks() : !aiChecks() ? "disabled (runChecks=false)" : "disabled (none defined)"));
+        System.out.println("  checks:   " + (hasChecks ? config.checks().keySet() : !aiChecks() ? "disabled (runChecks=false)" : "disabled (none defined)"));
         System.out.println("  skills:   " + skills);
         if (totalRuns > 1) {
             System.out.println("  runs:     " + totalRuns + " (per skill)");
@@ -354,16 +354,16 @@ class MigrationTest {
                 // 4. Run checks
                 List<String> failures = new ArrayList<>();
                 if (hasChecks) {
-                    MigrationChecks checks = new MigrationChecks(workDir, config.endpoints());
+                    MigrationChecks checks = new MigrationChecks(workDir);
                     System.out.println("  Running checks...");
 
-                    config.checks().forEach(check -> {
-                        System.out.print("    " + check + " ... ");
-                        boolean passed = checks.runCheck(check);
-                        result.addCheck(check, passed);
+                    config.checks().forEach((checkName, checkConfig) -> {
+                        System.out.print("    " + checkName + " ... ");
+                        boolean passed = checks.runCheck(checkName, checkConfig);
+                        result.addCheck(checkName, passed);
                         System.out.println(passed ? "PASS" : "FAIL");
                         if (!passed) {
-                            failures.add(check);
+                            failures.add(checkName);
                         }
                     });
                 } else {

@@ -19,11 +19,9 @@ public class MigrationChecks {
     private static final int APP_PORT = 18080;
 
     private final Path projectDir;
-    private final List<EndpointCheck> endpoints;
 
-    public MigrationChecks(Path projectDir, List<EndpointCheck> endpoints) {
+    public MigrationChecks(Path projectDir) {
         this.projectDir = projectDir;
-        this.endpoints = endpoints != null ? endpoints : List.of();
     }
 
     /**
@@ -108,10 +106,10 @@ public class MigrationChecks {
 
     /**
      * Start the app, hit each endpoint defined in project.yaml, and verify responses.
-     * Implicitly verifies startup — projects using this check don't need starts-up separately.
+     * Disabling the starts-up check as not needed.
      */
-    public boolean smokeTest() {
-        if (endpoints.isEmpty()) {
+    public boolean smokeTest(List<EndpointCheck> endpoints) {
+        if (endpoints == null || endpoints.isEmpty()) {
             System.out.println("      no endpoints defined — skipping");
             return true;
         }
@@ -177,14 +175,14 @@ public class MigrationChecks {
     /**
      * Run a specific named check.
      */
-    public boolean runCheck(String checkName) {
+    public boolean runCheck(String checkName, CheckConfig checkConfig) {
         return switch (checkName) {
             case "builds" -> builds();
             case "tests-pass" -> testsPass();
             case "no-spring-deps" -> noSpringDeps();
             case "has-quarkus" -> hasQuarkus();
             case "starts-up" -> startsUp();
-            case "smoke-test" -> smokeTest();
+            case "smoke-test" -> smokeTest(checkConfig.endpoints());
             case "no-thymeleaf" -> noThymeleaf();
             default -> throw new IllegalArgumentException("Unknown check: " + checkName);
         };
