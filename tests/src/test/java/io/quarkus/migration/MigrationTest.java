@@ -15,9 +15,9 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.*;
 import java.util.*;
-import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
+import static io.quarkus.migration.util.AiConfig.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -52,136 +52,6 @@ class MigrationTest {
     private static final ResultsTracker tracker = ResultsTracker.defaultTracker();
     private static final SkillResolver skillResolver = new SkillResolver(
             skillsDir(), Path.of("target", "skills").toAbsolutePath());
-    private static final Pattern VALID_PROJECT_NAME = Pattern.compile("[a-zA-Z0-9_\\-]+");
-
-    // -- config from system properties --
-
-    static String aiProvider() {
-        return System.getProperty("ai.provider", "google-vertex-anthropic");
-    }
-
-    static String aiModel() {
-        return System.getProperty("ai.model", "claude-opus-4-6@default");
-    }
-
-    /** Display string for the resolved provider/model combination. */
-    static String aiModelDisplay(String provider, String model) {
-        if (!provider.isEmpty() && !model.isEmpty()) return provider + "/" + model;
-        if (!model.isEmpty()) return model;
-        return "(ai agent default)";
-    }
-
-    static String aiStrategy() {
-        return System.getProperty("ai.strategy", "full");
-    }
-
-    static int aiTimeout() {
-        return Integer.parseInt(System.getProperty("ai.timeout", "300"));
-    }
-
-    static String aiCmd() {
-        return System.getProperty("ai.cmd", "opencode");
-    }
-
-    static String aiPrompt() {
-        return System.getProperty("ai.prompt", "");
-    }
-
-    /** Comma-separated list of projects to test. */
-    static String aiProjects() {
-        return System.getProperty("ai.projects", "");
-    }
-
-    /** Skill to use: a local name (looked up in skills/) or a GitHub URL. Overrides project.yaml. */
-    static String aiSkill() {
-        return System.getProperty("ai.skill", "");
-    }
-
-    /**
-     * Github branch containing part of its name "/" when we get the skill from a URL and
-     * the URL also has a subpath (e.g. tree/feature/my-branch/skills/my-skill). Ignored otherwise.
-     */
-    static String aiSkillBranch() {
-        return System.getProperty("ai.skill.branch", "");
-    }
-
-    /** Whether to pass --sanitize when exporting opencode sessions. Default: false. */
-    static boolean aiSanitize() {
-        return Boolean.parseBoolean(System.getProperty("ai.sanitize", "false"));
-    }
-
-    /** Whether to run verification checks after migration. Default: true. */
-    static boolean aiChecks() {
-        return Boolean.parseBoolean(System.getProperty("runChecks", "true"));
-    }
-
-    /** Whether to run the skill review step after migration. Default: true. */
-    static boolean aiReview() {
-        return Boolean.parseBoolean(System.getProperty("ai.review", "true"));
-    }
-
-    /** Number of times to repeat the migration. Default: 1. */
-    static int runs() {
-        return Integer.parseInt(System.getProperty("runs", "1"));
-    }
-
-    /** Space-separated skill arguments to substitute $0, $1, $tool, etc. in SKILL.md. */
-    static String aiArgs() {
-        return System.getProperty("ai.args", "");
-    }
-
-    /** When set to "all", include projects with enabled: false. Default: empty (respect the flag). */
-    static String aiEnabled() {
-        return System.getProperty("ai.enabled", "");
-    }
-
-    /** Comma-separated list of skills for benchmark (max 2). Overrides ai.skill when set. */
-    static List<String> aiSkills() {
-        String val = System.getProperty("ai.skills", "");
-        if (val.isEmpty()) return List.of();
-        String[] parts = val.split(",");
-        if (parts.length > 2) {
-            throw new IllegalArgumentException("ai.skills supports at most 2 skills for benchmark, got: " + parts.length);
-        }
-        return Arrays.stream(parts).map(String::trim).toList();
-    }
-
-    // -- discover test projects --
-
-    static Path repoRoot() {
-        Path dir = Path.of("").toAbsolutePath();
-        // If we're in tests/, go up one level
-        if (dir.getFileName().toString().equals("tests") && Files.isDirectory(dir.resolve("projects"))) {
-            return dir.getParent();
-        }
-        // If we're at repo root
-        if (Files.isDirectory(dir.resolve("skills"))) {
-            return dir;
-        }
-        // Otherwise try parent
-        if (dir.getParent() != null && Files.isDirectory(dir.getParent().resolve("skills"))) {
-            return dir.getParent();
-        }
-        return dir;
-    }
-
-    /**
-     * Set the dir of the projects
-     *
-     * @return the path of the project's folder
-     */
-    static Path projectsDir() {
-        // First check if we're running from tests/ dir
-        Path testsDir = Path.of("").toAbsolutePath();
-        if (Files.isDirectory(testsDir.resolve("projects"))) {
-            return testsDir.resolve("projects");
-        }
-        return repoRoot().resolve("tests").resolve("projects");
-    }
-
-    static Path skillsDir() {
-        return repoRoot().resolve("skills");
-    }
 
     /**
      * Provides parameterized test arguments by scanning the projects directory
@@ -204,11 +74,11 @@ class MigrationTest {
             for (String p : projectList.split(",")) {
                 String trimmed = p.trim();
                 if (trimmed.isEmpty()) continue;
-                if (!VALID_PROJECT_NAME.matcher(trimmed).matches()) {
+                if (!validProjectNamePattern().matcher(trimmed).matches()) {
                     throw new IllegalArgumentException(
                             "Invalid project name: '" + trimmed + "' — only alphanumerics, hyphens, and underscores are allowed");
                 }
-                projects.add(p);
+                projects.add(trimmed);
             }
         }
 
@@ -261,8 +131,7 @@ class MigrationTest {
         List<String> skills = aiSkills();
         boolean isBenchmark = skills.size() > 1;
         if (skills.isEmpty()) {
-            String singleSkill = aiSkill().isEmpty() ? config.skill() : aiSkill();
-            skills = List.of(singleSkill);
+            skills = List.of(config.skill());
         }
 
         System.out.println("\n" + "=".repeat(60));
@@ -287,7 +156,7 @@ class MigrationTest {
         String lastScore = "0/0";
 
         for (String skillRefStr : skills) {
-            Path skillPath = skillResolver.resolve(skillRefStr, aiSkillBranch());
+            Path skillPath = skillResolver.resolve(skillRefStr);
 
             boolean isUrl = skillRefStr.startsWith("https://") || skillRefStr.startsWith("http://") || skillRefStr.startsWith("git@");
             SkillReference skillRef = new SkillReference(

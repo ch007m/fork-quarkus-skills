@@ -42,6 +42,22 @@ public class SkillResolver {
     }
 
     /**
+     * @param skillRef skill name, GitHub URL, or GitHub URL with {@code #branch/subpath}
+     */
+    public Path resolve(String skillRef) throws IOException, InterruptedException {
+        if (skillRef == null || skillRef.isBlank()) {
+            throw new IllegalArgumentException("Skill reference cannot be empty");
+        }
+
+        int hashIdx = skillRef.indexOf('#');
+        if (hashIdx >= 0) {
+            return resolve(skillRef.substring(0, hashIdx), skillRef.substring(hashIdx + 1));
+        }
+
+        return resolve(skillRef, null);
+    }
+
+    /**
      * @param skillRef      skill name or GitHub URL
      * @param explicitBranch optional branch override — only needed when the branch name contains
      *                       {@code /} and the URL also has a subpath; ignored otherwise

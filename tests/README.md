@@ -96,10 +96,8 @@ The complete list of the configurations via `-D` flags:
 | `ai.timeout`      | `300`                                                                                                                                                                                               | Timeout per project in seconds                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | `ai.cmd`          | `opencode`                                                                                                                                                                                          | Path to the AI binary (if not on PATH)                                                                                                                                                                                                                                                                                                                                                                                                                           | |
 | `ai.projects`     | *(all)*                                                                                                                                                                                             | Comma-separated list of projects to test (e.g. `dummy,spring-rest-api`).                                                                                                                                                                                                                                                                                                                                                                                         |
-| `ai.skill`        | *(from project.yaml)*                                                                                                                                                                               | Skill to use: a local name (e.g. `spring-boot-to-quarkus`) or a GitHub URL                                                                                                                                                                                                                                                                                                                                                                                       |
-| `ai.skills`       | *(from project.yaml)*                                                                                                                                                                               | Comma-separated list of skills for benchmark comparison (max 2). Overrides `ai.skill`                                                                                                                                                                                                                                                                                                                                                                            |
+| `ai.skills`       | *(from project.yaml)*                                                                                                                                                                               | Comma-separated list of skills (max 2). Accepts local names or GitHub URLs. Use `#branch/subpath` for URLs with branch disambiguation (see [Selecting a skill](#selecting-a-skill))                                                                                                                                                                                                                                                                               |
 | `ai.args`         | *(empty)*                                                                                                                                                                                           | Space-separated skill arguments substituted into `SKILL.md` placeholders (see [Skill arguments](#skill-arguments))                                                                                                                                                                                                                                                                                                                                               |
-| `ai.skill.branch` | *(parsed from URL)*                                                                                                                                                                                 | Explicit branch — only needed when the branch name contains `/` and the URL has a subpath                                                                                                                                                                                                                                                                                                                                                                        |
 | `runs`            | `1`                                                                                                                                                                                                 | Number of times to repeat the migration. Each run gets a fresh workdir, its own report, and a separate entry in `history.jsonl`. Useful for collecting data across multiple runs                                                                                                                                                                                                                                                                                 |
 | `runChecks`       | `true`                                                                                                                                                                                              | When `false`, skip verification checks after migration. Also skipped when the project has no checks defined                                                                                                                                                                                                                                                                                                                                                      |
 | `ai.review`       | `true`                                                                                                                                                                                              | When `false`, skip the skill review step after migration. Also skipped when checks are disabled or none defined                                                                                                                                                                                                                                                                                                                                                  |
@@ -107,21 +105,20 @@ The complete list of the configurations via `-D` flags:
 
 ### Selecting a skill
 
-`ai.skill` accepts a local skill name or a GitHub URL pasted directly from the browser:
+`ai.skills` accepts a local skill name or a GitHub URL:
 
 ```bash
 # Local skill by name (looked up in skills/)
-mvn test -Dai.skill=jakarta-ee-to-quarkus
+mvn test -Dai.skills=jakarta-ee-to-quarkus
 
 # Remote skill — paste the GitHub URL as-is
-mvn test -Dai.skill=https://github.com/org/repo/tree/main/skills/custom-skill
+mvn test -Dai.skills=https://github.com/org/repo/tree/main/skills/custom-skill
 
 # Remote skill on a feature branch (branch name has no slashes — URL is unambiguous)
-mvn test -Dai.skill=https://github.com/org/repo/tree/new-feature-branch/skills/custom-skill
+mvn test -Dai.skills=https://github.com/org/repo/tree/new-feature-branch/skills/custom-skill
 
-# Remote skill when branch name contains '/' — add ai.skill.branch to resolve ambiguity
-mvn test -Dai.skill=https://github.com/org/repo/tree/branch/with/slashes/new-feature-skill \
-         -Dai.skill.branch=branch/with/slashes
+# Remote skill when branch name contains '/' — use '#' to separate the URL from branch/subpath
+mvn test -Dai.skills=https://github.com/org/repo#branch/with/slashes/skills/custom-skill
 ```
 
 Remote clones are cached in `target/skills/` (or within the AI agent recommended folder) and cleaned with `mvn clean`.
@@ -169,13 +166,13 @@ Arguments are space-separated:
 
 ```bash
 # Single argument — $tool / $0 → mtool
-mvn test -Dai.projects=dummy -Dai.skill=simple-analysis -Dai.args=mtool
+mvn test -Dai.projects=dummy -Dai.skills=simple-analysis -Dai.args=mtool
 
 # Two arguments — $tool / $0 → mtool, $format / $1 → json
-mvn test -Dai.projects=dummy -Dai.skill=simple-analysis -Dai.args="mtool json"
+mvn test -Dai.projects=dummy -Dai.skills=simple-analysis -Dai.args="mtool json"
 
 # No arguments — all placeholders remain unsubstituted
-mvn test -Dai.projects=dummy -Dai.skill=simple-analysis
+mvn test -Dai.projects=dummy -Dai.skills=simple-analysis
 ```
 
 > [!NOTE]
@@ -197,7 +194,7 @@ rm -rf target/runs
 // Dummy test to verify if the Agent works, is well configured
 mvn test \
   -Dai.projects=dummy \
-  -Dai.skill=../tests/skills/dummy \
+  -Dai.skills=../tests/skills/dummy \
   -Dai.prompt="Say Hello."
   
 // or using project.yaml definition
@@ -219,7 +216,7 @@ mvn test \
     -Dai.strategy=compatibility \
     -Dai.provider=google-vertex-anthropic \
     -Dai.model=claude-opus-4-6@default \
-    -Dai.skill=migrate-spring-to-quarkus \
+    -Dai.skills=migrate-spring-to-quarkus \
     -Dai.timeout=600
 ```
 > [!NOTE] You can remove the `-Dai.***` system properties having default values !
@@ -256,7 +253,7 @@ mvn test \
 # Test a single skill across several projects
 mvn test \
   -Dai.projects=spring-rest-api,spring-jpa-crud,spring-boot-todo-app \
-  -Dai.skill=migrate-spring-to-quarkus \
+  -Dai.skills=migrate-spring-to-quarkus \
   -Druns=3
 ```
 
