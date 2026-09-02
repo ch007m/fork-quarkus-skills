@@ -23,7 +23,7 @@ import static org.junit.jupiter.api.Assertions.*;
  *
  * <p>Uses a real session fixture produced by:
  * <pre>
- * mvn test -Dai.projects=dummy -Dai.skill=../tests/skills/dummy -Dai.prompt="Say Hello." -Dai.cmd=claude
+ * mvn test -Dai.projects=dummy -Dai.skills=../tests/skills/dummy -Dai.prompt="Say Hello." -Dai.cmd=claude
  * </pre>
  */
 class UsageAndReportTest {
