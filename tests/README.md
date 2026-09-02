@@ -52,7 +52,7 @@ mvn test -Dai.cmd=claude
 mvn test -Dai.cmd=pi
 
 # Run a specific sample project
-mvn test -Dai.project=spring-rest-api
+mvn test -Dai.projects=spring-rest-api
 
 # Set provider only (uses provider's default model)
 mvn test -Dai.provider=google-vertex-anthropic // opencode ai agent & Google Vertex AI
@@ -77,10 +77,10 @@ mvn test -Dai.cmd=claude -Dai.model=claude-sonnet-4-5-20250514
 mvn test -Dai.strategy=compatibility
 
 # Override timeout (seconds)
-mvn test -Dai.project=spring-petclinic -Dai.timeout=900
+mvn test -Dai.projects=spring-petclinic -Dai.timeout=900
 
 # Combine options
-mvn test -Dai.project=spring-jpa-crud -Dai.provider=anthropic -Dai.model=claude-sonnet-4-5-20250514 -Dai.timeout=600
+mvn test -Dai.projects=spring-jpa-crud -Dai.provider=anthropic -Dai.model=claude-sonnet-4-5-20250514 -Dai.timeout=600
 ```
 
 ### Configuration Properties
@@ -94,9 +94,8 @@ The complete list of the configurations via `-D` flags:
 | `ai.strategy`     | `full`                                                                                                                                                                                              | Migration strategy: `full` or `compatibility`. The strategy will tell to AI if we would like to migrate Spring Boot to Quarkus or using the Spring compatibility later which has been developed for some spring components like [DI](https://quarkus.io/guides/spring-di#more-spring-guides), [Web](https://quarkus.io/guides/spring-web), [Data JPA](https://quarkus.io/guides/spring-data-jpa), [Data REST](https://quarkus.io/guides/spring-data-rest),  etc. |
 | `ai.prompt`       | Migration prompt message declared [here](https://github.com/quarkusio/skills/blob/bec909505664bf3405c39542a402c4ee8e5c5cf1/tests/src/test/java/io/quarkus/migration/runner/OpenCodeRunner.java#L55) | Override the default migration prompt message when it is needed to test a new and different skills                                                                                                                                                                                                                                                                                                                                                               |
 | `ai.timeout`      | `300`                                                                                                                                                                                               | Timeout per project in seconds                                                                                                                                                                                                                                                                                                                                                                                                                                   |
-| `ai.cmd`          | `opencode`                                                                                                                                                                                          | Path to the AI binary (if not on PATH)                                                                                                                                                                                                                                                                                                                                                                                                                           |
-| `ai.project`      | *(all)*                                                                                                                                                                                             | Run only this project name                                                                                                                                                                                                                                                                                                                                                                                                                                       |
-| `ai.projects`     | *(all)*                                                                                                                                                                                             | Comma-separated list of projects to test (e.g. `dummy,spring-rest-api`). Overrides `ai.project`                                                                                                                                                                                                                                                                                                                                                                  |
+| `ai.cmd`          | `opencode`                                                                                                                                                                                          | Path to the AI binary (if not on PATH)                                                                                                                                                                                                                                                                                                                                                                                                                           | |
+| `ai.projects`     | *(all)*                                                                                                                                                                                             | Comma-separated list of projects to test (e.g. `dummy,spring-rest-api`).                                                                                                                                                                                                                                                                                                                                                                                         |
 | `ai.skill`        | *(from project.yaml)*                                                                                                                                                                               | Skill to use: a local name (e.g. `spring-boot-to-quarkus`) or a GitHub URL                                                                                                                                                                                                                                                                                                                                                                                       |
 | `ai.skills`       | *(from project.yaml)*                                                                                                                                                                               | Comma-separated list of skills for benchmark comparison (max 2). Overrides `ai.skill`                                                                                                                                                                                                                                                                                                                                                                            |
 | `ai.args`         | *(empty)*                                                                                                                                                                                           | Space-separated skill arguments substituted into `SKILL.md` placeholders (see [Skill arguments](#skill-arguments))                                                                                                                                                                                                                                                                                                                                               |
@@ -170,13 +169,13 @@ Arguments are space-separated:
 
 ```bash
 # Single argument — $tool / $0 → mtool
-mvn test -Dai.project=dummy -Dai.skill=simple-analysis -Dai.args=mtool
+mvn test -Dai.projects=dummy -Dai.skill=simple-analysis -Dai.args=mtool
 
 # Two arguments — $tool / $0 → mtool, $format / $1 → json
-mvn test -Dai.project=dummy -Dai.skill=simple-analysis -Dai.args="mtool json"
+mvn test -Dai.projects=dummy -Dai.skill=simple-analysis -Dai.args="mtool json"
 
 # No arguments — all placeholders remain unsubstituted
-mvn test -Dai.project=dummy -Dai.skill=simple-analysis
+mvn test -Dai.projects=dummy -Dai.skill=simple-analysis
 ```
 
 > [!NOTE]
@@ -197,12 +196,12 @@ rm -rf target/runs
 
 // Dummy test to verify if the Agent works, is well configured
 mvn test \
-  -Dai.project=dummy \
+  -Dai.projects=dummy \
   -Dai.skill=../tests/skills/dummy \
   -Dai.prompt="Say Hello."
   
 // or using project.yaml definition
-mvn test -Dai.project=dummy -Dai.prompt="Say Hello."  
+mvn test -Dai.projects=dummy -Dai.prompt="Say Hello."  
 ```
 Verify if there is under the following path `/target/workdirs/dummy` a `HELLO.md created !
   
@@ -216,7 +215,7 @@ export GOOGLE_CLOUD_PROJECT=your-google-cloud-project-id
 rm -rf target/runs
 
 mvn test \
-    -Dai.project=spring-boot-todo-app \
+    -Dai.projects=spring-boot-todo-app \
     -Dai.strategy=compatibility \
     -Dai.provider=google-vertex-anthropic \
     -Dai.model=claude-opus-4-6@default \
@@ -234,7 +233,7 @@ Use `-Dai.skills` to benchmark up to 2 skills against one or more projects. Each
 ```bash
 # Compare two skills on the same project with 5 runs each
 mvn test \
-  -Dai.project=spring-rest-api \
+  -Dai.projects=spring-rest-api \
   -Dai.skills=migrate-spring-to-quarkus,migrate-spring-to-quarkus-mtool \
   -Dai.cmd=claude \
   -Druns=5
@@ -386,7 +385,7 @@ There are three ways to include disabled projects:
 
 ```bash
 # 1. Select a specific disabled project by name — bypasses the enabled flag
-mvn test -Dai.project=dummy
+mvn test -Dai.projects=dummy
 
 # 2. Select multiple projects (enabled or disabled) — bypasses the enabled flag
 mvn test -Dai.projects=dummy,cargotracker,spring-rest-api
@@ -396,7 +395,7 @@ mvn test -Dai.enabled=all
 ```
 
 > [!NOTE]
-> When using `-Dai.project` or `-Dai.projects`, the `test.enabled` flag is ignored — the harness runs exactly the projects you asked for. The `-Dai.enabled=all` flag is useful when you want to run every project in the repository without listing them.
+> When using `-Dai.projects`, the `test.enabled` flag is ignored — the harness runs exactly the projects you asked for. The `-Dai.enabled=all` flag is useful when you want to run every project in the repository without listing them.
 
 ### Enabling a project permanently
 
@@ -435,13 +434,13 @@ Checks are **enabled by default**. Use the `-DrunChecks` flag to control them:
 
 ```bash
 # Run with checks (default)
-mvn test -Dai.project=spring-rest-api
+mvn test -Dai.projects=spring-rest-api
 
 # Skip checks — useful for quick smoke tests or when iterating on skills
-mvn test -Dai.project=spring-rest-api -DrunChecks=false
+mvn test -Dai.projects=spring-rest-api -DrunChecks=false
 
 # Checks are also auto-disabled when the project has none defined (e.g. dummy)
-mvn test -Dai.project=dummy -Dai.prompt="Say Hello." -Dai.cmd=claude
+mvn test -Dai.projects=dummy -Dai.prompt="Say Hello." -Dai.cmd=claude
 ```
 
 When checks are disabled, the console output shows the reason:

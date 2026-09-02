@@ -116,7 +116,7 @@ public class ResultsTracker {
         // Command executed — only include properties that were explicitly set
         sb.append("## Command executed\n\n");
         sb.append("```bash\n");
-        sb.append("mvn test -Dai.project=%s".formatted(result.getProject()));
+        sb.append("mvn test -Dai.projects=%s".formatted(result.getProject()));
         String prompt = result.getPrompt();
         if (prompt != null && !prompt.isBlank()) {
             sb.append(" -Dai.prompt=\"%s\"".formatted(prompt));

@@ -15,6 +15,7 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.*;
 import java.util.*;
+import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -28,7 +29,7 @@ import static org.junit.jupiter.api.Assertions.*;
  *   <li>{@code ai.strategy} — migration strategy: full or compatibility (default: full)</li>
  *   <li>{@code ai.timeout} — timeout in seconds per project (default: 300)</li>
  *   <li>{@code ai.cmd} — path to AI agent binary (default: opencode)</li>
- *   <li>{@code ai.project} — run only this project (default: all)</li>
+ *   <li>{@code ai.projects} — run only the project(s) (default: all)</li>
  * </ul>
  *
  * <p>Usage:
@@ -36,8 +37,8 @@ import static org.junit.jupiter.api.Assertions.*;
  * # Run all projects with defaults
  * mvn test
  *
- * # Run specific project
- * mvn test -Dai.project=spring-rest-api
+ * # Run a specific project
+ * mvn test -Dai.projects=spring-rest-api
  *
  * # Compare models
  * mvn test -Dai.model=vertex-anthropic/claude-sonnet-4-5@20250929
@@ -51,6 +52,7 @@ class MigrationTest {
     private static final ResultsTracker tracker = ResultsTracker.defaultTracker();
     private static final SkillResolver skillResolver = new SkillResolver(
             skillsDir(), Path.of("target", "skills").toAbsolutePath());
+    private static final Pattern VALID_PROJECT_NAME = Pattern.compile("[a-zA-Z0-9_\\-]+");
 
     // -- config from system properties --
 
@@ -85,8 +87,9 @@ class MigrationTest {
         return System.getProperty("ai.prompt", "");
     }
 
-    static String aiProject() {
-        return System.getProperty("ai.project", "");
+    /** Comma-separated list of projects to test. */
+    static String aiProjects() {
+        return System.getProperty("ai.projects", "");
     }
 
     /** Skill to use: a local name (looked up in skills/) or a GitHub URL. Overrides project.yaml. */
@@ -127,11 +130,6 @@ class MigrationTest {
         return System.getProperty("ai.args", "");
     }
 
-    /** Comma-separated list of projects to test. Overrides ai.project when set. */
-    static String aiProjects() {
-        return System.getProperty("ai.projects", "");
-    }
-
     /** When set to "all", include projects with enabled: false. Default: empty (respect the flag). */
     static String aiEnabled() {
         return System.getProperty("ai.enabled", "");
@@ -167,6 +165,11 @@ class MigrationTest {
         return dir;
     }
 
+    /**
+     * Set the dir of the projects
+     *
+     * @return the path of the project's folder
+     */
     static Path projectsDir() {
         // First check if we're running from tests/ dir
         Path testsDir = Path.of("").toAbsolutePath();
@@ -180,28 +183,43 @@ class MigrationTest {
         return repoRoot().resolve("skills");
     }
 
-    static Stream<Arguments> migrationProjects() throws IOException {
-        Path projects = projectsDir();
-        String multiFilter = aiProjects();
-        String singleFilter = aiProject();
+    /**
+     * Provides parameterized test arguments by scanning the projects directory
+     * for subdirectories containing a {@code project.yaml} file.
+     *
+     * <p>Each {@link Arguments} pair contains a {@link ProjectConfig} and its
+     * corresponding directory {@link Path}. Results can be filtered by project
+     * name via {@code AI_PROJECTS} or include disabled tests via {@code AI_ENABLED=all}.
+     *
+     * @return a stream of (ProjectConfig, Path) pairs for parameterized tests
+     * @throws IOException if the projects directory cannot be listed or a
+     *         {@code project.yaml} file cannot be parsed
+     */
+    static Stream<Arguments> projectsToTest() throws IOException {
+        Path pathToProjectsDir = projectsDir();
+        String projectList = aiProjects();
 
-        Set<String> filterSet = new LinkedHashSet<>();
-        if (!multiFilter.isEmpty()) {
-            for (String p : multiFilter.split(",")) {
-                filterSet.add(p.trim());
+        Set<String> projects = new LinkedHashSet<>();
+        if (!projectList.isEmpty()) {
+            for (String p : projectList.split(",")) {
+                String trimmed = p.trim();
+                if (trimmed.isEmpty()) continue;
+                if (!VALID_PROJECT_NAME.matcher(trimmed).matches()) {
+                    throw new IllegalArgumentException(
+                            "Invalid project name: '" + trimmed + "' — only alphanumerics, hyphens, and underscores are allowed");
+                }
+                projects.add(p);
             }
-        } else if (!singleFilter.isEmpty()) {
-            filterSet.add(singleFilter);
         }
 
         boolean includeDisabled = "all".equalsIgnoreCase(aiEnabled());
-        boolean hasExplicitFilter = !filterSet.isEmpty();
+        boolean filterByName = !projectList.isEmpty();
 
-        try (var dirs = Files.list(projects)) {
+        try (var dirs = Files.list(pathToProjectsDir)) {
             return dirs
                     .filter(Files::isDirectory)
                     .filter(p -> Files.exists(p.resolve("project.yaml")))
-                    .filter(p -> hasExplicitFilter ? filterSet.contains(p.getFileName().toString()) : true)
+                    .filter(p -> filterByName ? projects.contains(p.getFileName().toString()) : true)
                     .sorted()
                     .map(p -> {
                         try {
@@ -215,7 +233,7 @@ class MigrationTest {
                     })
                     .filter(args -> {
                         ProjectConfig config = (ProjectConfig) args.get()[0];
-                        return config.isTestEnabled() || includeDisabled || hasExplicitFilter;
+                        return config.isTestEnabled() || includeDisabled || filterByName;
                     })
                     .toList()  // materialize before stream closes
                     .stream();
@@ -227,7 +245,7 @@ class MigrationTest {
     // -- the actual test --
 
     @ParameterizedTest(name = "{0}")
-    @MethodSource("migrationProjects")
+    @MethodSource("projectsToTest")
     @Order(1)
     void migrate(ProjectConfig config, Path projectDir) throws Exception {
         // Resolve provider/model defaults per agent
