@@ -28,7 +28,7 @@ import static org.junit.jupiter.api.Assertions.*;
  *   <li>{@code ai.model} — model to use (default: vertex-anthropic/claude-sonnet-4-5@20250929)</li>
  *   <li>{@code ai.strategy} — migration strategy: full or compatibility (default: full)</li>
  *   <li>{@code ai.timeout} — timeout in seconds per project (default: 300)</li>
- *   <li>{@code ai.cmd} — path to AI agent binary (default: opencode)</li>
+ *   <li>{@code ai.cmd} — path to AI agent binary (default: claude)</li>
  *   <li>{@code ai.projects} — run only the project(s) (default: all)</li>
  * </ul>
  *
