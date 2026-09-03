@@ -3,13 +3,20 @@ package io.quarkus.migration;
 import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.nio.file.*;
+import java.time.Duration;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 /**
  * Individual migration quality checks that can be run against a migrated project directory.
  */
 public class MigrationChecks {
+
+    private static final int APP_PORT = 18080;
 
     private final Path projectDir;
 
@@ -97,6 +104,48 @@ public class MigrationChecks {
         }
     }
 
+    /**
+     * Start the app, hit each endpoint defined in project.yaml, and verify responses.
+     * Disabling the starts-up check as not needed.
+     */
+    public boolean smokeTest(List<EndpointCheck> endpoints) {
+        if (endpoints == null || endpoints.isEmpty()) {
+            System.out.println("      no endpoints defined — skipping");
+            return true;
+        }
+
+        Path startupLog = projectDir.resolve(".startup.log");
+        Process process = null;
+        try {
+            process = startApp();
+            if (!waitForReady(process)) {
+                dumpStartupLog(startupLog, "app failed to start");
+                return false;
+            }
+
+            boolean allPassed = true;
+            try (HttpClient client = HttpClient.newBuilder()
+                    .connectTimeout(Duration.ofSeconds(5))
+                    .build()) {
+                for (EndpointCheck ep : endpoints) {
+                    if (!process.isAlive()) {
+                        System.out.println("      app process crashed. Cannot access the endpoint " + ep.path());
+                        return false;
+                    }
+                    boolean ok = testEndpoint(client, ep);
+                    if (!ok) allPassed = false;
+                }
+            }
+            return allPassed;
+
+        } catch (Exception e) {
+            dumpStartupLog(startupLog, e.getMessage());
+            return false;
+        } finally {
+            stopApp(process);
+        }
+    }
+
     private void dumpStartupLog(Path logFile, String reason) {
         System.err.println("    starts-up FAILED: " + reason);
         System.err.println("    .startup.log (" + logFile + "):");
@@ -126,19 +175,105 @@ public class MigrationChecks {
     /**
      * Run a specific named check.
      */
-    public boolean runCheck(String checkName) {
+    public boolean runCheck(String checkName, CheckConfig checkConfig) {
         return switch (checkName) {
             case "builds" -> builds();
             case "tests-pass" -> testsPass();
             case "no-spring-deps" -> noSpringDeps();
             case "has-quarkus" -> hasQuarkus();
             case "starts-up" -> startsUp();
+            case "smoke-test" -> smokeTest(checkConfig.endpoints());
             case "no-thymeleaf" -> noThymeleaf();
             default -> throw new IllegalArgumentException("Unknown check: " + checkName);
         };
     }
 
-    // -- helpers --
+    // -- app lifecycle helpers --
+
+    private Process startApp() throws IOException {
+        ProcessBuilder pb = new ProcessBuilder(
+                getMvnCmd(), "-q", "quarkus:dev",
+                "-Dquarkus.http.port=" + APP_PORT,
+                "-Dquarkus.devservices.enabled=false",
+                "-Dquarkus.analytics.disabled=true"
+        ).directory(projectDir.toFile())
+         .redirectErrorStream(true)
+         .redirectOutput(projectDir.resolve(".startup.log").toFile());
+
+        return pb.start();
+    }
+
+    private boolean waitForReady(Process process) throws InterruptedException {
+        for (int i = 0; i < 30; i++) {
+            Thread.sleep(2000);
+            if (!process.isAlive()) return false;
+            if (httpOk("http://localhost:" + APP_PORT + "/q/health/ready") ||
+                httpOk("http://localhost:" + APP_PORT + "/")) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void stopApp(Process process) {
+        if (process != null) {
+            process.destroyForcibly();
+            try {
+                process.waitFor(10, TimeUnit.SECONDS);
+            } catch (InterruptedException ignored) {
+            }
+        }
+    }
+
+    // -- endpoint testing --
+
+    private boolean testEndpoint(HttpClient client, EndpointCheck ep) {
+        String url = "http://localhost:" + APP_PORT + ep.path();
+        try {
+            HttpRequest.Builder reqBuilder = HttpRequest.newBuilder()
+                    .uri(URI.create(url))
+                    .timeout(Duration.ofSeconds(10));
+
+            switch (ep.effectiveMethod()) {
+                case "POST" -> reqBuilder
+                        .header("Content-Type", "application/json")
+                        .POST(HttpRequest.BodyPublishers.ofString(ep.body() != null ? ep.body() : ""));
+                case "PUT" -> reqBuilder
+                        .header("Content-Type", "application/json")
+                        .PUT(HttpRequest.BodyPublishers.ofString(ep.body() != null ? ep.body() : ""));
+                case "DELETE" -> reqBuilder.DELETE();
+                default -> reqBuilder.GET();
+            }
+
+            HttpResponse<String> response = client.send(reqBuilder.build(), HttpResponse.BodyHandlers.ofString());
+
+            int actual = response.statusCode();
+            int expected = ep.effectiveExpectedStatus();
+            boolean statusOk = actual == expected;
+            boolean bodyOk = ep.bodyContains() == null || ep.bodyContains().isBlank()
+                    || response.body().contains(ep.bodyContains());
+
+            if (!statusOk) {
+                System.out.printf("      FAIL %s %s → %d (expected %d)%n",
+                        ep.effectiveMethod(), ep.path(), actual, expected);
+            } else if (!bodyOk) {
+                System.out.printf("      FAIL %s %s → body missing '%s'%n",
+                        ep.effectiveMethod(), ep.path(), ep.bodyContains());
+            } else {
+                System.out.printf("      OK   %s %s → %d%n",
+                        ep.effectiveMethod(), ep.path(), actual);
+            }
+
+            return statusOk && bodyOk;
+
+        } catch (Exception e) {
+            System.out.printf("      FAIL %s %s → %s%n",
+                    ep.effectiveMethod(), ep.path(), e.getMessage());
+            return false;
+        }
+    }
+
+    // -- maven / file helpers --
 
     private int runMaven(String... goals) {
         try {

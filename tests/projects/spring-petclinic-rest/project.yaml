@@ -7,8 +7,18 @@ ref: master
 timeout: 900
 
 checks:
-  - builds
-  - tests-pass
-  - no-spring-deps
-  - has-quarkus
-  - starts-up
+  builds:
+  tests-pass:
+  no-spring-deps:
+  has-quarkus:
+  smoke-test:
+    endpoints:
+      - path: /api/owners
+        method: GET
+        expected_status: 200
+      - path: /api/vets
+        method: GET
+        expected_status: 200
+      - path: /api/pettypes
+        method: GET
+        expected_status: 200

@@ -6,8 +6,15 @@ source: local
 timeout: 900
 
 checks:
-  - builds
-  - tests-pass
-  - no-spring-deps
-  - has-quarkus
-  - starts-up
+  builds:
+  tests-pass:
+  no-spring-deps:
+  has-quarkus:
+  smoke-test:
+    endpoints:
+      - path: /
+        method: GET
+        expected_status: 200
+      - path: /home
+        method: GET
+        expected_status: 200
