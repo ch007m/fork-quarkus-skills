@@ -30,6 +30,9 @@
         <ai.projects></ai.projects>
         <ai.skills></ai.skills>
         <ai.enabled></ai.enabled>
+        <ai.prompt></ai.prompt>
+        <ai.args></ai.args>
+        <ai.sanitize>false</ai.sanitize>
         <runs>1</runs>
         <runChecks>true</runChecks>
         <ai.review>false</ai.review>
@@ -80,6 +83,9 @@
                         <runChecks>${runChecks}</runChecks>
                         <ai.review>${ai.review}</ai.review>
                         <ai.enabled>${ai.enabled}</ai.enabled>
+                        <ai.prompt>${ai.prompt}</ai.prompt>
+                        <ai.args>${ai.args}</ai.args>
+                        <ai.sanitize>${ai.sanitize}</ai.sanitize>
                     </systemPropertyVariables>
                     <!-- Long-running tests -->
                     <forkedProcessTimeoutInSeconds>3600</forkedProcessTimeoutInSeconds>
@@ -122,6 +128,9 @@
                         <argument>-DrunChecks=${runChecks}</argument>
                         <argument>-Dai.review=${ai.review}</argument>
                         <argument>-Dai.enabled=${ai.enabled}</argument>
+                        <argument>-Dai.prompt=${ai.prompt}</argument>
+                        <argument>-Dai.args=${ai.args}</argument>
+                        <argument>-Dai.sanitize=${ai.sanitize}</argument>
                         <argument>-classpath</argument>
                         <classpath/>
                         <argument>io.quarkus.ai.launcher.Main</argument>
