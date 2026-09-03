@@ -1,4 +1,4 @@
-package io.quarkus.migration;
+package io.quarkus.ai.result;
 
 import io.quarkus.ai.runner.AgentRunner;
 import io.quarkus.ai.skill.SkillReference;

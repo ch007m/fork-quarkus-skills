@@ -1,7 +1,7 @@
 package io.quarkus.migration.test;
 
-import io.quarkus.migration.MigrationResult;
-import io.quarkus.migration.ResultsTracker;
+import io.quarkus.ai.result.MigrationResult;
+import io.quarkus.ai.result.ResultsTracker;
 import io.quarkus.ai.skill.SkillReference;
 import io.quarkus.ai.runner.AgentRunner;
 import org.junit.jupiter.api.DisplayName;

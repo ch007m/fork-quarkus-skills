@@ -1,4 +1,4 @@
-package io.quarkus.migration;
+package io.quarkus.ai.result;
 
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.SerializationFeature;
@@ -116,7 +116,7 @@ public class ResultsTracker {
         var sb = new StringBuilder();
         sb.append("# Migration Run Report\n\n");
 
-        // Command executed — only include properties that were explicitly set
+        // Command executed
         sb.append("## Command executed\n\n");
         sb.append("```bash\n");
         sb.append("mvn test -Dai.projects=%s".formatted(result.getProject()));

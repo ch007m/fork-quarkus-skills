@@ -63,6 +63,10 @@
                     <!-- Stream test output to console in real-time -->
                     <redirectTestOutputToFile>false</redirectTestOutputToFile>
                     <useFile>false</useFile>
+                    <!-- Exclude integration test by default -->
+                    <excludes>
+                        <exclude>**/MigrationTest.java</exclude>
+                    </excludes>
                     <!-- Pass config as system properties -->
                     <systemPropertyVariables>
                         <ai.provider>${ai.provider}</ai.provider>
@@ -81,6 +85,69 @@
                     <forkedProcessTimeoutInSeconds>3600</forkedProcessTimeoutInSeconds>
                 </configuration>
             </plugin>
+            <plugin>
+                <artifactId>maven-shade-plugin</artifactId>
+                <version>3.6.0</version>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>shade</goal>
+                        </goals>
+                        <configuration>
+                            <transformers>
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                                    <mainClass>io.quarkus.ai.launcher.Main</mainClass>
+                                </transformer>
+                            </transformers>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>3.5.0</version>
+                <configuration>
+                    <executable>java</executable>
+                    <arguments>
+                        <argument>-Dai.provider=${ai.provider}</argument>
+                        <argument>-Dai.model=${ai.model}</argument>
+                        <argument>-Dai.strategy=${ai.strategy}</argument>
+                        <argument>-Dai.timeout=${ai.timeout}</argument>
+                        <argument>-Dai.cmd=${ai.cmd}</argument>
+                        <argument>-Dai.projects=${ai.projects}</argument>
+                        <argument>-Dai.skills=${ai.skills}</argument>
+                        <argument>-Druns=${runs}</argument>
+                        <argument>-DrunChecks=${runChecks}</argument>
+                        <argument>-Dai.review=${ai.review}</argument>
+                        <argument>-Dai.enabled=${ai.enabled}</argument>
+                        <argument>-classpath</argument>
+                        <classpath/>
+                        <argument>io.quarkus.ai.launcher.Main</argument>
+                    </arguments>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <profile>
+            <id>integration</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <artifactId>maven-surefire-plugin</artifactId>
+                        <version>${surefire.version}</version>
+                        <configuration>
+                            <excludes combine.self="override"/>
+                            <includes>
+                                <include>**/MigrationTest.java</include>
+                            </includes>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>

@@ -2,8 +2,8 @@ package io.quarkus.migration.test;
 
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
-import io.quarkus.migration.MigrationResult;
-import io.quarkus.migration.ResultsTracker;
+import io.quarkus.ai.result.MigrationResult;
+import io.quarkus.ai.result.ResultsTracker;
 import io.quarkus.ai.skill.SkillReference;
 import io.quarkus.ai.runner.AgentRunner;
 import io.quarkus.ai.runner.claude.ClaudeRunner;
