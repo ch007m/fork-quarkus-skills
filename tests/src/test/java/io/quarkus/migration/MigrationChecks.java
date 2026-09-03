@@ -129,7 +129,7 @@ public class MigrationChecks {
                     .build()) {
                 for (EndpointCheck ep : endpoints) {
                     if (!process.isAlive()) {
-                        System.out.println("      app process died mid-test");
+                        System.out.println("      app process crashed. Cannot access the endpoint " + ep.path());
                         return false;
                     }
                     boolean ok = testEndpoint(client, ep);
