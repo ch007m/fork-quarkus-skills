@@ -2,9 +2,8 @@ package io.quarkus.migration.test;
 
 import io.quarkus.migration.MigrationResult;
 import io.quarkus.migration.ResultsTracker;
-import io.quarkus.migration.SkillReference;
-import io.quarkus.migration.runner.AgentRunner;
-import io.quarkus.migration.runner.ClaudeRunner;
+import io.quarkus.ai.skill.SkillReference;
+import io.quarkus.ai.runner.AgentRunner;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -13,10 +12,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
-import java.util.Collections;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 

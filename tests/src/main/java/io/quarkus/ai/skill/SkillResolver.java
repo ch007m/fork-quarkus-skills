@@ -1,4 +1,4 @@
-package io.quarkus.migration;
+package io.quarkus.ai.skill;
 
 import java.io.IOException;
 import java.nio.file.*;

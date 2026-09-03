@@ -9,9 +9,9 @@ test:
   enabled: false
 
 checks:
-  - builds
-  - tests-pass
-  - no-spring-deps
-  - has-quarkus
-  - starts-up
-  - no-thymeleaf  # should be converted to Qute or alternative
+  builds:
+  tests-pass:
+  no-spring-deps:
+  has-quarkus:
+  starts-up:
+  no-thymeleaf:

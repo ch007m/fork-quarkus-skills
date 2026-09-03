@@ -1,12 +1,12 @@
 package io.quarkus.migration.test;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 import io.quarkus.migration.MigrationResult;
 import io.quarkus.migration.ResultsTracker;
-import io.quarkus.migration.SkillReference;
-import io.quarkus.migration.runner.AgentRunner;
-import io.quarkus.migration.runner.ClaudeRunner;
+import io.quarkus.ai.skill.SkillReference;
+import io.quarkus.ai.runner.AgentRunner;
+import io.quarkus.ai.runner.claude.ClaudeRunner;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -155,9 +155,7 @@ class UsageAndReportTest {
         assertTrue(modelUsage.size() >= 1, "should have at least one model entry");
 
         long muInput = 0, muOutput = 0, muCacheRead = 0, muCacheWrite = 0;
-        var fields = modelUsage.fields();
-        while (fields.hasNext()) {
-            var entry = fields.next();
+        for (var entry : modelUsage.properties()) {
             JsonNode mu = entry.getValue();
             muInput += mu.path("inputTokens").asLong(0);
             muOutput += mu.path("outputTokens").asLong(0);

@@ -1,6 +1,8 @@
-package io.quarkus.migration.runner;
+package io.quarkus.ai.runner.opencode;
 
-import com.fasterxml.jackson.databind.JsonNode;
+import tools.jackson.databind.JsonNode;
+import io.quarkus.ai.runner.AbstractRunner;
+import io.quarkus.ai.runner.AgentRunner;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -9,7 +11,6 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -20,7 +21,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import static io.quarkus.migration.runner.OpenCodeSessionExporter.exportSessions;
+import static io.quarkus.ai.runner.opencode.OpenCodeSessionExporter.exportSessions;
 
 public class OpenCodeRunner extends AbstractRunner implements AgentRunner {
 
@@ -380,7 +381,7 @@ public class OpenCodeRunner extends AbstractRunner implements AgentRunner {
     }
 
     @Override
-    void addModelArgs(List<String> cmd) {
+    protected void addModelArgs(List<String> cmd) {
         boolean hasProvider = provider != null && !provider.isBlank();
         boolean hasModel = model != null && !model.isBlank();
 

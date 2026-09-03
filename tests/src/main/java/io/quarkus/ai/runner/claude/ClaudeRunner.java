@@ -1,6 +1,8 @@
-package io.quarkus.migration.runner;
+package io.quarkus.ai.runner.claude;
 
-import com.fasterxml.jackson.databind.JsonNode;
+import tools.jackson.databind.JsonNode;
+import io.quarkus.ai.runner.AbstractRunner;
+import io.quarkus.ai.runner.AgentRunner;
 
 import java.io.*;
 import java.nio.file.*;
@@ -248,9 +250,7 @@ public class ClaudeRunner extends AbstractRunner implements AgentRunner {
                 double totalCostUsd = 0;
 
                 if (modelUsageNode.isObject() && modelUsageNode.size() > 0) {
-                    var fields = modelUsageNode.fields();
-                    while (fields.hasNext()) {
-                        var entry = fields.next();
+                    for (var entry : modelUsageNode.properties()) {
                         String modelName = entry.getKey();
                         JsonNode mu = entry.getValue();
                         long inp = mu.path("inputTokens").asLong(0);
@@ -324,9 +324,7 @@ public class ClaudeRunner extends AbstractRunner implements AgentRunner {
                         } else if ("result".equals(type)) {
                             JsonNode modelUsageNode = event.path("modelUsage");
                             if (modelUsageNode.isObject() && modelUsageNode.size() > 0) {
-                                var fields = modelUsageNode.fields();
-                                while (fields.hasNext()) {
-                                    var entry = fields.next();
+                                for (var entry : modelUsageNode.properties()) {
                                     String modelName = entry.getKey();
                                     JsonNode mu = entry.getValue();
                                     long muInput = mu.path("inputTokens").asLong(0);
@@ -376,7 +374,7 @@ public class ClaudeRunner extends AbstractRunner implements AgentRunner {
     }
 
     @Override
-    void addModelArgs(List<String> cmd) {
+    protected void addModelArgs(List<String> cmd) {
         boolean hasModel = model != null && !model.isBlank();
         if (hasModel) {
             cmd.add("--model");

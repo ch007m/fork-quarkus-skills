@@ -1,8 +1,10 @@
 package io.quarkus.migration;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.SerializationFeature;
+import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.databind.node.ObjectNode;
+import io.quarkus.ai.skill.SkillReference;
 
 import java.io.*;
 import java.nio.file.*;
@@ -17,8 +19,9 @@ import java.util.Locale;
  */
 public class ResultsTracker {
 
-    private static final ObjectMapper JSON = new ObjectMapper()
-            .disable(SerializationFeature.INDENT_OUTPUT);
+    private static final ObjectMapper JSON = JsonMapper.builder()
+            .disable(SerializationFeature.INDENT_OUTPUT)
+            .build();
 
     private final Path historyFile;
 

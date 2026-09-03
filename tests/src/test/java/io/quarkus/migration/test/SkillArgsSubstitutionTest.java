@@ -1,6 +1,6 @@
 package io.quarkus.migration.test;
 
-import io.quarkus.migration.runner.ClaudeRunner;
+import io.quarkus.ai.runner.claude.ClaudeRunner;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 

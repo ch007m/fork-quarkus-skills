@@ -1,4 +1,4 @@
-package io.quarkus.migration;
+package io.quarkus.ai.checks;
 
 import java.io.*;
 import java.net.HttpURLConnection;
@@ -12,15 +12,23 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Individual migration quality checks that can be run against a migrated project directory.
+ * Verifies a project by executing different checks declared here and able to:
+ * - Compile,
+ * - Run tests,
+ * - Start the java application,
+ * - Probe endpoints
+ *
+ * Each check can be enabled if you declare them within the Project.yaml file under the field: "checks:"
+ * using the name defined part of the method: runCheck()
+ *
  */
-public class MigrationChecks {
+public class ProjectVerifier {
 
     private static final int APP_PORT = 18080;
 
     private final Path projectDir;
 
-    public MigrationChecks(Path projectDir) {
+    public ProjectVerifier(Path projectDir) {
         this.projectDir = projectDir;
     }
 

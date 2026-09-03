@@ -1,4 +1,4 @@
-package io.quarkus.migration;
+package io.quarkus.ai.checks;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 

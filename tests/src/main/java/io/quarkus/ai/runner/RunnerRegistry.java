@@ -1,4 +1,8 @@
-package io.quarkus.migration.runner;
+package io.quarkus.ai.runner;
+
+import io.quarkus.ai.runner.claude.ClaudeRunner;
+import io.quarkus.ai.runner.opencode.OpenCodeRunner;
+import io.quarkus.ai.runner.pi.PiRunner;
 
 import java.nio.file.Path;
 import java.util.HashMap;

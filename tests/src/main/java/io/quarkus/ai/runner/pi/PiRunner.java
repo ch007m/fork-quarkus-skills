@@ -1,7 +1,9 @@
-package io.quarkus.migration.runner;
+package io.quarkus.ai.runner.pi;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+import io.quarkus.ai.runner.AbstractRunner;
+import io.quarkus.ai.runner.AgentRunner;
 
 import java.io.*;
 import java.nio.file.*;
@@ -144,7 +146,7 @@ public class PiRunner extends AbstractRunner implements AgentRunner {
     }
 
     @Override
-    void addModelArgs(List<String> cmd) {
+    protected void addModelArgs(List<String> cmd) {
         boolean hasProvider = provider != null && !provider.isBlank();
         boolean hasModel = model != null && !model.isBlank();
 

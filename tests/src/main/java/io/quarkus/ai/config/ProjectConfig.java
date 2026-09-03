@@ -1,10 +1,12 @@
-package io.quarkus.migration;
+package io.quarkus.ai.config;
+
+import io.quarkus.ai.checks.CheckConfig;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * Maps to a project.yaml file defining a test project.
+ * Maps to a project.yaml file defining the different parameters.
  */
 public record ProjectConfig(
         String name,

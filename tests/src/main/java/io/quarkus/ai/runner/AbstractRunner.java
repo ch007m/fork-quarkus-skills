@@ -1,7 +1,7 @@
-package io.quarkus.migration.runner;
+package io.quarkus.ai.runner;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 import java.io.BufferedWriter;
 import java.io.IOException;
@@ -39,7 +39,7 @@ public abstract class AbstractRunner {
      *
      * @param cmd The Ai command to be enriched with the provider/model
      */
-    abstract void addModelArgs(List<String> cmd);
+    protected abstract void addModelArgs(List<String> cmd);
 
     /**
      * Parse ai session JSONL files to extract token usage and cost.

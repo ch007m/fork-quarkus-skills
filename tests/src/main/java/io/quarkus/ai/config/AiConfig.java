@@ -1,4 +1,4 @@
-package io.quarkus.migration.util;
+package io.quarkus.ai.config;
 
 import java.nio.file.Files;
 import java.nio.file.Path;

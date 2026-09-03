@@ -1,6 +1,6 @@
 package io.quarkus.migration.test;
 
-import io.quarkus.migration.SkillResolver;
+import io.quarkus.ai.skill.SkillResolver;
 import org.junit.jupiter.api.*;
 
 import java.io.IOException;

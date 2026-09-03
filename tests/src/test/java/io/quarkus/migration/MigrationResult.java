@@ -1,6 +1,7 @@
 package io.quarkus.migration;
 
-import io.quarkus.migration.runner.AgentRunner;
+import io.quarkus.ai.runner.AgentRunner;
+import io.quarkus.ai.skill.SkillReference;
 
 import java.time.Duration;
 import java.time.Instant;

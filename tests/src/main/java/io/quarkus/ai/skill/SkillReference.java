@@ -1,7 +1,7 @@
-package io.quarkus.migration;
+package io.quarkus.ai.skill;
 
 /**
- * Describes the skill used for a migration run.
+ * Skill definition.
  *
  * @param name      the skill name from the project configuration (e.g. {@code spring-boot-to-quarkus})
  * @param url       the original URL when the skill was fetched from a remote repository, or {@code null} for local skills

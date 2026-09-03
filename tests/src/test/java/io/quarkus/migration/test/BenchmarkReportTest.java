@@ -2,9 +2,9 @@ package io.quarkus.migration.test;
 
 import io.quarkus.migration.MigrationResult;
 import io.quarkus.migration.ResultsTracker;
-import io.quarkus.migration.SkillReference;
-import io.quarkus.migration.runner.AgentRunner;
-import io.quarkus.migration.runner.ClaudeRunner;
+import io.quarkus.ai.skill.SkillReference;
+import io.quarkus.ai.runner.AgentRunner;
+import io.quarkus.ai.runner.claude.ClaudeRunner;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.io.TempDir;
 

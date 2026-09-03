@@ -1,11 +1,15 @@
 package io.quarkus.migration;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
-import io.quarkus.migration.runner.AgentRunner;
-import io.quarkus.migration.runner.RunnerRegistry;
-import static io.quarkus.migration.runner.RunnerRegistry.resolveModel;
-import static io.quarkus.migration.runner.RunnerRegistry.resolveProvider;
+import tools.jackson.dataformat.yaml.YAMLMapper;
+import io.quarkus.ai.config.ProjectConfig;
+import io.quarkus.ai.runner.AgentRunner;
+import io.quarkus.ai.runner.RunnerRegistry;
+import static io.quarkus.ai.runner.RunnerRegistry.resolveModel;
+import static io.quarkus.ai.runner.RunnerRegistry.resolveProvider;
+
+import io.quarkus.ai.skill.SkillReference;
+import io.quarkus.ai.skill.SkillResolver;
+import io.quarkus.ai.checks.ProjectVerifier;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -17,7 +21,7 @@ import java.nio.file.*;
 import java.util.*;
 import java.util.stream.Stream;
 
-import static io.quarkus.migration.util.AiConfig.*;
+import static io.quarkus.ai.config.AiConfig.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -48,7 +52,7 @@ import static org.junit.jupiter.api.Assertions.*;
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class MigrationTest {
 
-    private static final ObjectMapper YAML = new ObjectMapper(new YAMLFactory());
+    private static final YAMLMapper YAML = new YAMLMapper();
     private static final ResultsTracker tracker = ResultsTracker.defaultTracker();
     private static final SkillResolver skillResolver = new SkillResolver(
             skillsDir(), Path.of("target", "skills").toAbsolutePath());
@@ -92,14 +96,10 @@ class MigrationTest {
                     .filter(p -> filterByName ? projects.contains(p.getFileName().toString()) : true)
                     .sorted()
                     .map(p -> {
-                        try {
-                            ProjectConfig config = YAML.readValue(
-                                    p.resolve("project.yaml").toFile(),
-                                    ProjectConfig.class);
-                            return Arguments.of(config, p);
-                        } catch (IOException e) {
-                            throw new UncheckedIOException(e);
-                        }
+                        ProjectConfig config = YAML.readValue(
+                                p.resolve("project.yaml").toFile(),
+                                ProjectConfig.class);
+                        return Arguments.of(config, p);
                     })
                     .filter(args -> {
                         ProjectConfig config = (ProjectConfig) args.get()[0];
@@ -241,7 +241,7 @@ class MigrationTest {
                 // 4. Run checks
                 List<String> failures = new ArrayList<>();
                 if (hasChecks) {
-                    MigrationChecks checks = new MigrationChecks(workDir);
+                    ProjectVerifier checks = new ProjectVerifier(workDir);
                     System.out.println("  Running checks...");
 
                     config.checks().forEach((checkName, checkConfig) -> {

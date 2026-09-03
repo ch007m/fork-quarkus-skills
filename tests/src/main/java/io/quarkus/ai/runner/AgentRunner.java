@@ -1,4 +1,4 @@
-package io.quarkus.migration.runner;
+package io.quarkus.ai.runner;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -23,10 +23,10 @@ public interface AgentRunner {
                       long inputTokens, long outputTokens, long thinkingTokens,
                       long cacheRead, long cacheWrite,
                       List<ModelUsage> modelUsages) {
-        UsageStats(long totalTokens, double totalCost, int apiCalls, String actualModel) {
+        public UsageStats(long totalTokens, double totalCost, int apiCalls, String actualModel) {
             this(totalTokens, totalCost, apiCalls, 0, actualModel, 0, 0, 0, 0, 0, List.of());
         }
-        UsageStats(long totalTokens, double totalCost, int apiCalls, int toolCalls, String actualModel) {
+        public UsageStats(long totalTokens, double totalCost, int apiCalls, int toolCalls, String actualModel) {
             this(totalTokens, totalCost, apiCalls, toolCalls, actualModel, 0, 0, 0, 0, 0, List.of());
         }
     }
