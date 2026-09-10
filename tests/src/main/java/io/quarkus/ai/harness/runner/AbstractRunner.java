@@ -9,28 +9,24 @@ import java.nio.file.*;
 import java.util.List;
 
 public abstract class AbstractRunner {
-    protected String aiCmd;
-    protected String provider;
+    protected String aiAgent;
     protected String model;
     protected String strategy;
     protected int timeoutSeconds;
     protected Path skillPath;
     protected String prompt;
     protected String skillArgs;
-    protected boolean sanitize;
     protected ObjectMapper JSON;
 
-    public AbstractRunner(String aiCmd, String provider, String model, Path skillPath, String strategy, int timeoutSeconds,
-            String prompt, String skillArgs, boolean sanitize) {
-        this.aiCmd = aiCmd;
-        this.provider = provider;
+    public AbstractRunner(String aiAgent, String model, Path skillPath, String strategy, int timeoutSeconds,
+            String prompt, String skillArgs) {
+        this.aiAgent = aiAgent;
         this.model = model;
         this.skillPath = skillPath;
         this.strategy = strategy;
         this.timeoutSeconds = timeoutSeconds;
         this.prompt = prompt;
         this.skillArgs = skillArgs != null ? skillArgs : "";
-        this.sanitize = sanitize;
         this.JSON = new ObjectMapper();
     }
 
@@ -42,7 +38,7 @@ public abstract class AbstractRunner {
     protected abstract void addModelArgs(List<String> cmd);
 
     /**
-     * Parse ai session JSONL files to extract token usage and cost.
+     * Parse AI session JSONL files to extract token usage and cost.
      */
     public abstract AgentRunner.UsageStats extractUsage(List<String> sessionFiles);
 

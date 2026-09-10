@@ -4,7 +4,7 @@ import io.quarkus.ai.harness.result.MigrationResult;
 import io.quarkus.ai.harness.result.ResultsTracker;
 import io.quarkus.ai.harness.skill.SkillReference;
 import io.quarkus.ai.harness.runner.AgentRunner;
-import io.quarkus.ai.harness.runner.claude.ClaudeRunner;
+import io.quarkus.ai.harness.runner.acp.SmallryeAcpRunner;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -92,42 +92,38 @@ class BenchmarkReportTest {
     void endToEndTestFromFixtures() throws IOException {
         Path fixture1 = tempDir.resolve("session1.jsonl");
         Path fixture2 = tempDir.resolve("session2.jsonl");
-        try (var in1 = getClass().getResourceAsStream("/sessions/dummy1_claude_session.jsonl");
-             var in2 = getClass().getResourceAsStream("/sessions/dummy2_claude_session.jsonl")) {
-            assertNotNull(in1, "dummy1 fixture not found");
-            assertNotNull(in2, "dummy2 fixture not found");
+        try (var in1 = getClass().getResourceAsStream("/sessions/dummy1_acp_session.jsonl");
+             var in2 = getClass().getResourceAsStream("/sessions/dummy2_acp_session.jsonl")) {
+            assertNotNull(in1, "dummy1 ACP fixture not found");
+            assertNotNull(in2, "dummy2 ACP fixture not found");
             Files.copy(in1, fixture1);
             Files.copy(in2, fixture2);
         }
 
-        ClaudeRunner runner = new ClaudeRunner(
-                "claude", null, "claude-opus-4-6", Path.of("/tmp/skill"),
-                "full", 300, "", "", false);
+        SmallryeAcpRunner runner = new SmallryeAcpRunner(
+                "claude-acp", "claude-opus-4-6", Path.of("/tmp/skill"),
+                "full", 300, "", "");
 
         // Extract from fixture 1 (skill A — efficient)
-        // Token counts sum from modelUsage: haiku(600,20,0,0) + opus(4,300,30000,15000)
         AgentRunner.UsageStats stats1 = runner.extractUsage(
                 Collections.singletonList(fixture1.toString()));
-        assertEquals(604, stats1.inputTokens(), "fixture1 input: haiku(600) + opus(4)");
-        assertEquals(320, stats1.outputTokens(), "fixture1 output: haiku(20) + opus(300)");
+        assertEquals(604, stats1.inputTokens(), "fixture1 inputTokens");
+        assertEquals(320, stats1.outputTokens(), "fixture1 outputTokens");
         assertEquals(30_000, stats1.cacheRead(), "fixture1 cacheRead");
         assertEquals(15_000, stats1.cacheWrite(), "fixture1 cacheWrite");
         assertEquals(45_924, stats1.totalTokens(), "fixture1 totalTokens");
         assertEquals(0.15, stats1.totalCost(), 0.001, "fixture1 cost");
-        assertEquals(3, stats1.apiCalls(), "fixture1 apiCalls");
         assertEquals(1, stats1.toolCalls(), "fixture1 toolCalls");
 
         // Extract from fixture 2 (skill B — expensive)
-        // Token counts sum from modelUsage: haiku(1000,40,0,0) + opus(12,600,60000,30000)
         AgentRunner.UsageStats stats2 = runner.extractUsage(
                 Collections.singletonList(fixture2.toString()));
-        assertEquals(1012, stats2.inputTokens(), "fixture2 input: haiku(1000) + opus(12)");
-        assertEquals(640, stats2.outputTokens(), "fixture2 output: haiku(40) + opus(600)");
+        assertEquals(1012, stats2.inputTokens(), "fixture2 inputTokens");
+        assertEquals(640, stats2.outputTokens(), "fixture2 outputTokens");
         assertEquals(60_000, stats2.cacheRead(), "fixture2 cacheRead");
         assertEquals(30_000, stats2.cacheWrite(), "fixture2 cacheWrite");
         assertEquals(91_652, stats2.totalTokens(), "fixture2 totalTokens");
         assertEquals(0.30, stats2.totalCost(), 0.001, "fixture2 cost");
-        assertEquals(4, stats2.apiCalls(), "fixture2 apiCalls");
         assertEquals(2, stats2.toolCalls(), "fixture2 toolCalls");
 
         // Build MigrationResults for two different skills
@@ -199,7 +195,7 @@ class BenchmarkReportTest {
 
     private MigrationResult buildResult(String project, String model, String runName) {
         SkillReference skillRef = new SkillReference("test-skill", null, "/tmp/skill");
-        MigrationResult result = new MigrationResult("claude", project, model, "full", skillRef);
+        MigrationResult result = new MigrationResult("claude-acp", project, model, "full", skillRef);
         result.setRunName(runName);
         result.setDuration(Duration.ofSeconds(28));
         result.setPrompt("Say Hello.");
@@ -216,7 +212,7 @@ class BenchmarkReportTest {
     private MigrationResult buildResultFromStats(AgentRunner.UsageStats stats,
             String skillName, String skillPath, String runName, Duration duration) {
         SkillReference ref = new SkillReference(skillName, null, skillPath);
-        MigrationResult r = new MigrationResult("claude", "dummy", "claude-opus-4-6", "full", ref);
+        MigrationResult r = new MigrationResult("claude-acp", "dummy", "claude-opus-4-6", "full", ref);
         r.setRunName(runName);
         r.setDuration(duration);
         r.setTotalTokens(stats.totalTokens());
