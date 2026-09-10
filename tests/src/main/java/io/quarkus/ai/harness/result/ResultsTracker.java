@@ -126,11 +126,7 @@ public class ResultsTracker {
             sb.append(" -Dai.prompt=\"%s\"".formatted(prompt));
         }
         if (!"opencode".equals(result.getAgent())) {
-            sb.append(" -Dai.cmd=%s".formatted(result.getAgent()));
-        }
-        String userProvider = result.getUserProvider();
-        if (userProvider != null && !userProvider.isBlank()) {
-            sb.append(" -Dai.provider=%s".formatted(userProvider));
+            sb.append(" -Dai.agent=%s".formatted(result.getAgent()));
         }
         String userModel = result.getUserModel();
         if (userModel != null && !userModel.isBlank()) {

@@ -39,7 +39,6 @@ public class MigrationResult {
     private long reviewTokens;
     private double reviewCost;
     private String prompt;
-    private String userProvider;
     private String userModel;
     private String projectType;
     private List<AgentRunner.ModelUsage> modelUsages = List.of();
@@ -142,9 +141,6 @@ public class MigrationResult {
 
     public String getPrompt() { return prompt; }
     public void setPrompt(String prompt) { this.prompt = prompt; }
-
-    public String getUserProvider() { return userProvider; }
-    public void setUserProvider(String userProvider) { this.userProvider = userProvider; }
 
     public String getUserModel() { return userModel; }
     public void setUserModel(String userModel) { this.userModel = userModel; }

@@ -6,7 +6,7 @@ import io.quarkus.ai.harness.result.MigrationResult;
 import io.quarkus.ai.harness.result.ResultsTracker;
 import io.quarkus.ai.harness.skill.SkillReference;
 import io.quarkus.ai.harness.runner.AgentRunner;
-import io.quarkus.ai.harness.runner.claude.ClaudeRunner;
+import io.quarkus.ai.harness.runner.acp.SmallryeAcpRunner;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -18,30 +18,25 @@ import java.util.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Validates token extraction from Claude JSONL session files and
+ * Validates token extraction from ACP JSON-RPC session files and
  * individual run report (.report.md) generation.
  *
- * <p>Uses a real session fixture produced by:
- * <pre>
- * mvn test -Dai.projects=dummy -Dai.skills=../tests/skills/dummy -Dai.prompt="Say Hello." -Dai.cmd=claude
- * </pre>
+ * <p>Uses a session fixture in ACP JSON-RPC format.
  */
 class UsageAndReportTest {
 
     private static final ObjectMapper JSON = new ObjectMapper();
 
-    private static final String SESSION_FIXTURE = "/sessions/dummy_claude_session.jsonl";
+    private static final String SESSION_FIXTURE = "/sessions/dummy_acp_session.jsonl";
 
-    // Expected values from the fixture's "result" event — summed from modelUsage (haiku + opus)
-    private static final long EXPECTED_INPUT_TOKENS = 819;   // haiku(814) + opus(5)
-    private static final long EXPECTED_OUTPUT_TOKENS = 515;  // haiku(21) + opus(494)
-    private static final long EXPECTED_CACHE_READ = 48_661;  // opus only
-    private static final long EXPECTED_CACHE_WRITE = 25_246; // opus only
+    // Expected values from the ACP fixture's result.usage block
+    private static final long EXPECTED_INPUT_TOKENS = 819;
+    private static final long EXPECTED_OUTPUT_TOKENS = 515;
+    private static final long EXPECTED_CACHE_READ = 48_661;
+    private static final long EXPECTED_CACHE_WRITE = 25_246;
     private static final long EXPECTED_TOTAL_TOKENS = EXPECTED_INPUT_TOKENS + EXPECTED_OUTPUT_TOKENS
             + EXPECTED_CACHE_READ + EXPECTED_CACHE_WRITE;
-    private static final long EXPECTED_THINKING_TOKENS = 54; // from result.usage (session-level)
-    private static final double EXPECTED_COST = 0.195412;    // sum of costUSD: 0.000919 + 0.194493
-    private static final int EXPECTED_API_CALLS = 5;
+    private static final double EXPECTED_COST = 0.195412;    // from usage_update cost.amount
     private static final int EXPECTED_TOOL_CALLS = 2;
 
     @TempDir
@@ -61,11 +56,11 @@ class UsageAndReportTest {
     // ─── Token extraction from JSONL ──────────────────────────────────
 
     @Test
-    @DisplayName("extractUsage sums usage from result event")
+    @DisplayName("extractUsage sums usage from ACP result event")
     void extractUsageSumsUsage() {
-        ClaudeRunner runner = new ClaudeRunner(
-                "claude", null, "claude-opus-4-6", Path.of("/tmp/skill"),
-                "full", 300, "", "", false);
+        SmallryeAcpRunner runner = new SmallryeAcpRunner(
+                "claude-acp", "claude-opus-4-6", Path.of("/tmp/skill"),
+                "full", 300, "", "");
 
         AgentRunner.UsageStats stats = runner.extractUsage(
                 Collections.singletonList(fixtureFile.toString()));
@@ -74,27 +69,16 @@ class UsageAndReportTest {
                 "input tokens from result.usage");
         assertEquals(EXPECTED_OUTPUT_TOKENS, stats.outputTokens(),
                 "output tokens from result.usage");
-        assertEquals(EXPECTED_THINKING_TOKENS, stats.thinkingTokens(),
-                "thinking tokens from result.usage.output_tokens_details");
         assertEquals(EXPECTED_CACHE_READ, stats.cacheRead(),
-                "cache read tokens from opus model");
+                "cache read tokens from result.usage");
         assertEquals(EXPECTED_CACHE_WRITE, stats.cacheWrite(),
-                "cache write tokens from opus model");
+                "cache write tokens from result.usage");
         assertEquals(EXPECTED_TOTAL_TOKENS, stats.totalTokens(),
                 "total = input + output + cacheRead + cacheWrite");
         assertEquals(EXPECTED_COST, stats.totalCost(), 0.0001,
-                "cost from total_cost_usd field");
-        assertEquals(EXPECTED_API_CALLS, stats.apiCalls(),
-                "api calls = number of 'assistant' type events");
+                "cost from usage_update cost.amount");
         assertEquals(EXPECTED_TOOL_CALLS, stats.toolCalls(),
-                "tool calls = number of 'tool_use' blocks in assistant events");
-        assertEquals(2, stats.modelUsages().size(), "modelUsages from result.modelUsage");
-        assertEquals("claude-haiku-4-5@20251001", stats.modelUsages().get(0).model());
-        assertEquals(814, stats.modelUsages().get(0).inputTokens());
-        assertEquals(21, stats.modelUsages().get(0).outputTokens());
-        assertEquals("claude-opus-4-6", stats.modelUsages().get(1).model());
-        assertEquals(5, stats.modelUsages().get(1).inputTokens());
-        assertEquals(494, stats.modelUsages().get(1).outputTokens());
+                "tool calls = number of tool_call entries with status=pending");
     }
 
     @Test
@@ -107,9 +91,9 @@ class UsageAndReportTest {
     @Test
     @DisplayName("extractUsage handles null session files gracefully")
     void extractUsageNullFiles() {
-        ClaudeRunner runner = new ClaudeRunner(
-                "claude", null, null, Path.of("/tmp/skill"),
-                "full", 300, "", "", false);
+        SmallryeAcpRunner runner = new SmallryeAcpRunner(
+                "claude-acp", null, Path.of("/tmp/skill"),
+                "full", 300, "", "");
 
         AgentRunner.UsageStats stats = runner.extractUsage(null);
         assertEquals(0, stats.totalTokens());
@@ -119,9 +103,9 @@ class UsageAndReportTest {
     @Test
     @DisplayName("extractUsage with empty file list returns zero stats")
     void extractUsageEmptyFiles() {
-        ClaudeRunner runner = new ClaudeRunner(
-                "claude", null, null, Path.of("/tmp/skill"),
-                "full", 300, "", "", false);
+        SmallryeAcpRunner runner = new SmallryeAcpRunner(
+                "claude-acp", null, Path.of("/tmp/skill"),
+                "full", 300, "", "");
 
         AgentRunner.UsageStats stats = runner.extractUsage(Collections.emptyList());
         assertEquals(0, stats.totalTokens());
@@ -131,7 +115,7 @@ class UsageAndReportTest {
     // ─── Result event parsing ─────────────────────────────────────────
 
     @Test
-    @DisplayName("result event contains both usage and modelUsage with different granularity")
+    @DisplayName("ACP result event contains usage with token counts")
     void resultEventStructure() throws IOException {
         List<String> lines = Files.readAllLines(fixtureFile);
         String lastLine = lines.getLast().trim();
@@ -139,34 +123,22 @@ class UsageAndReportTest {
             lastLine = lines.get(lines.size() - 2).trim();
         }
 
-        JsonNode result = JSON.readTree(lastLine);
-        assertEquals("result", result.path("type").asText());
+        JsonNode entry = JSON.readTree(lastLine);
+        JsonNode result = entry.path("result");
+        assertTrue(result.has("usage"), "result should contain usage block");
 
-        // usage block has aggregate (non-model-split) numbers
         JsonNode usage = result.path("usage");
-        assertTrue(usage.has("input_tokens"));
-        assertTrue(usage.has("output_tokens"));
-        assertTrue(usage.has("cache_read_input_tokens"));
-        assertTrue(usage.has("cache_creation_input_tokens"));
+        assertTrue(usage.has("inputTokens"));
+        assertTrue(usage.has("outputTokens"));
+        assertTrue(usage.has("cachedReadTokens"));
+        assertTrue(usage.has("cachedWriteTokens"));
+        assertTrue(usage.has("totalTokens"));
 
-        // modelUsage block splits by model
-        JsonNode modelUsage = result.path("modelUsage");
-        assertTrue(modelUsage.isObject());
-        assertTrue(modelUsage.size() >= 1, "should have at least one model entry");
-
-        long muInput = 0, muOutput = 0, muCacheRead = 0, muCacheWrite = 0;
-        for (var entry : modelUsage.properties()) {
-            JsonNode mu = entry.getValue();
-            muInput += mu.path("inputTokens").asLong(0);
-            muOutput += mu.path("outputTokens").asLong(0);
-            muCacheRead += mu.path("cacheReadInputTokens").asLong(0);
-            muCacheWrite += mu.path("cacheCreationInputTokens").asLong(0);
-        }
-
-        assertEquals(819, muInput, "modelUsage input: haiku(814) + opus(5)");
-        assertEquals(515, muOutput, "modelUsage output: haiku(21) + opus(494)");
-        assertEquals(48_661, muCacheRead, "modelUsage cacheRead from opus");
-        assertEquals(25_246, muCacheWrite, "modelUsage cacheWrite from opus");
+        assertEquals(819, usage.path("inputTokens").asLong());
+        assertEquals(515, usage.path("outputTokens").asLong());
+        assertEquals(48_661, usage.path("cachedReadTokens").asLong());
+        assertEquals(25_246, usage.path("cachedWriteTokens").asLong());
+        assertEquals(75_241, usage.path("totalTokens").asLong());
     }
 
     // ─── Report generation (writeMarkdownReport) ──────────────────────
@@ -186,7 +158,6 @@ class UsageAndReportTest {
         assertContains(report, "| Tool calls | 2 |");
         assertContains(report, "| Input tokens | 819 |");
         assertContains(report, "| Output tokens | 515 |");
-        assertContains(report, "| Thinking tokens | 54 |");
         assertContains(report, "| Cache read | 48,661 |");
         assertContains(report, "| Cache write | 25,246 |");
         assertContains(report, "| Total tokens | 75,241 |");
@@ -276,17 +247,17 @@ class UsageAndReportTest {
     // ─── Integration: full pipeline from JSONL to report ──────────────
 
     @Test
-    @DisplayName("end-to-end: extract usage from fixture JSONL and generate per-model report")
+    @DisplayName("end-to-end: extract usage from ACP fixture JSONL and generate report")
     void endToEndFixtureToReport() throws IOException {
-        ClaudeRunner runner = new ClaudeRunner(
-                "claude", null, "claude-opus-4-6", Path.of("/tmp/skill"),
-                "full", 300, "Say Hello.", "", false);
+        SmallryeAcpRunner runner = new SmallryeAcpRunner(
+                "claude-acp", "claude-opus-4-6", Path.of("/tmp/skill"),
+                "full", 300, "Say Hello.", "");
 
         AgentRunner.UsageStats stats = runner.extractUsage(
                 Collections.singletonList(fixtureFile.toString()));
 
         SkillReference skillRef = new SkillReference("dummy", null, "/tmp/skill");
-        MigrationResult result = new MigrationResult("claude", "dummy",
+        MigrationResult result = new MigrationResult("claude-acp", "dummy",
                 "claude-opus-4-6", "full", skillRef);
         result.setRunName("e2e-test");
         result.setDuration(Duration.ofSeconds(28));
@@ -308,18 +279,19 @@ class UsageAndReportTest {
 
         String report = Files.readString(tempDir.resolve("e2e-test.report.md"));
 
-        // Per-model table format (modelUsages populated from result.modelUsage)
-        assertContains(report, "| claude-haiku-4-5@20251001 | 814 | 21 | 0 | 0 | $0.0009 |");
-        assertContains(report, "| claude-opus-4-6 | 5 | 494 | 48,661 | 25,246 | $0.1945 |");
-        assertContains(report, "| **Total** | **819** | **515** | **48,661** | **25,246** | **$0.20** | |");
-        assertContains(report, "**Grand total: 819 + 515 + 48,661 + 25,246 = 75,241 tokens**");
-        assertContains(report, "**Cost formula:**");
+        // Single-model fallback table (ACP doesn't provide per-model breakdown)
+        assertContains(report, "| Input tokens | 819 |");
+        assertContains(report, "| Output tokens | 515 |");
+        assertContains(report, "| Cache read | 48,661 |");
+        assertContains(report, "| Cache write | 25,246 |");
+        assertContains(report, "| Total tokens | 75,241 |");
+        assertContains(report, "| Cost | $0.20 |");
 
         // Run info
         assertContains(report, "| Duration | 0m 28s (28s) |");
         assertContains(report, "| Tool calls | 2 |");
         assertContains(report, "-Dai.prompt=\"Say Hello.\"");
-        assertContains(report, "-Dai.cmd=claude");
+        assertContains(report, "-Dai.agent=claude-acp");
     }
 
     // ─── History JSONL recording ──────────────────────────────────────
@@ -349,17 +321,17 @@ class UsageAndReportTest {
 
     private MigrationResult buildResult(String project, String model, String runName) {
         SkillReference skillRef = new SkillReference("test-skill", null, "/tmp/skill");
-        MigrationResult result = new MigrationResult("claude", project, model, "full", skillRef);
+        MigrationResult result = new MigrationResult("claude-acp", project, model, "full", skillRef);
         result.setRunName(runName);
         result.setDuration(Duration.ofSeconds(28));
         result.setPrompt("Say Hello.");
         result.setTotalTokens(EXPECTED_TOTAL_TOKENS);
         result.setTotalCost(EXPECTED_COST);
-        result.setApiCalls(EXPECTED_API_CALLS);
+        result.setApiCalls(0);
         result.setToolCalls(EXPECTED_TOOL_CALLS);
         result.setInputTokens(EXPECTED_INPUT_TOKENS);
         result.setOutputTokens(EXPECTED_OUTPUT_TOKENS);
-        result.setThinkingTokens(EXPECTED_THINKING_TOKENS);
+        result.setThinkingTokens(0);
         result.setCacheRead(EXPECTED_CACHE_READ);
         result.setCacheWrite(EXPECTED_CACHE_WRITE);
         return result;

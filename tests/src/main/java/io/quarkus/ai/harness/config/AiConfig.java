@@ -16,27 +16,20 @@ public final class AiConfig {
 
     private AiConfig() {}
 
-    /** AI provider name (e.g. {@code anthropic}, {@code google-vertex-anthropic}). Default: {@code google-vertex-anthropic}. */
-    public static String aiProvider() {
-        return System.getProperty("ai.provider", "google-vertex-anthropic");
-    }
-
-    /** Model ID (e.g. {@code claude-opus-4-6@default}, {@code claude-sonnet-4-5-20250514}). Default: {@code claude-opus-4-6@default}. */
+    /** Model, optionally prefixed with provider (e.g. {@code anthropic/claude-opus-4-6}, {@code opus}, {@code claude-opus-4-6}). */
     public static String aiModel() {
-        return System.getProperty("ai.model", "claude-opus-4-6@default");
+        return System.getProperty("ai.model", "");
     }
 
     /**
-     * Returns a human-readable display string for the resolved provider/model combination.
+     * Returns a human-readable display string for the model.
      *
-     * @param provider the resolved provider name
-     * @param model    the resolved model ID
-     * @return a display string such as {@code google-vertex-anthropic/claude-opus-4-6@default}
+     * @param model the model value (may include a {@code provider/} prefix)
+     * @return the model string, or {@code "(agent default)"} if empty
      */
-    public static String aiModelDisplay(String provider, String model) {
-        if (!provider.isEmpty() && !model.isEmpty()) return provider + "/" + model;
+    public static String aiModelDisplay(String model) {
         if (!model.isEmpty()) return model;
-        return "(ai agent default)";
+        return "(agent default)";
     }
 
     /** Migration strategy: {@code full} or {@code compatibility}. Default: {@code full}. */
@@ -49,9 +42,9 @@ public final class AiConfig {
         return Integer.parseInt(System.getProperty("ai.timeout", "300"));
     }
 
-    /** Path to the AI agent binary. Default: {@code claude}. */
-    public static String aiCmd() {
-        return System.getProperty("ai.cmd", "claude");
+    /** ACP agent ID as installed under {@code ~/.acp/agents/<ID>}. Default: claude-acp*/
+    public static String aiAgent() {
+        return System.getProperty("ai.agent", "claude-acp");
     }
 
     /** Override prompt message. Default: empty (uses built-in prompt). */
@@ -62,11 +55,6 @@ public final class AiConfig {
     /** Comma-separated list of project names to test. Default: empty (all projects). */
     public static String aiProjects() {
         return System.getProperty("ai.projects", "");
-    }
-
-    /** Whether to pass {@code --sanitize} when exporting opencode sessions. Default: {@code false}. */
-    public static boolean aiSanitize() {
-        return Boolean.parseBoolean(System.getProperty("ai.sanitize", "false"));
     }
 
     /** Whether to run verification checks after migration. Default: {@code true}. */

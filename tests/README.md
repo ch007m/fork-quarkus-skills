@@ -7,80 +7,102 @@ JUnit 5 test suite that runs migration skills against real projects, scores the 
 - **Java 21+** — `java -version`
 - **Maven 3.9+** — `mvn -version`
 - **git** — for cloning external test projects
+- **acp client** - to [install](https://github.com/smallrye/smallrye-acp-client#acp-cli) locally an AI acp agent and check available models
+- **AI Provider KEY** - an AI api key to access a LLM provider: Google Vertex, Anthropic, IBM Bob, etc
 
 > [!IMPORTANT]
-> At least one **AI agent installed** and provider configured (see [AI agent section](#ai-agent-and-provider) below)
+> Before to run the test, install at least one **AI ACP agent** and set the appropriate environment variables according to your AI LLM provider ! 
 
-## AI agent and provider
+## Set up the AI ACP agent and identify the model to be used
 
-The test harness calls an Ai `agent` to run migrations. The AI agent needs credentials for whichever combination AI provider/model you want to test. 
-The following table references the agent currently supported and refers to their documentation to install the agent and configure a provider using a subscription, API key, OAuth, etc
+The test harness calls an AI [ACP](https://agentclientprotocol.com/get-started/introduction) `agent` to execute a headless conversation using prompt message and SKILL. 
 
-| Agent name | `ai.cmd` | Default provider | Default model | Description |
-|---|---|---|---|---|
-| [opencode](https://opencode.ai/) | `opencode` | `google-vertex-anthropic` | `claude-opus-4-6@default` | Default agent. See the list of the LLM [providers](https://opencode.ai/docs/providers/) supported |
-| [Claude Code](https://docs.anthropic.com/en/docs/claude-code) | `claude` | _(n/a)_ | `claude-opus-4-6` | Uses Anthropic API directly. Set up via `claude login` or `ANTHROPIC_API_KEY` env var |
-| [Pi](https://pi.dev) | `pi` | `vertex-anthropic` | `claude-opus-4-6` | See the list of the [providers](https://pi.dev/docs/latest/providers) to configure them like the credentials |
+To simplify your life, you can use the [Smallrye ACP client](https://github.com/smallrye/smallrye-acp-client#acp-cli) able to install locally (under ~/.acp/agents) the agent you would like to use from the registry of the agents: 
 
-> [!IMPORTANT] 
-> Before to execute a test, verify that the AI agent can access the provider and the model selected
+```shell
+acp registry list -r
+ACP Registry v1.0.0 - 41 agents available
+Current platform: darwin-aarch64
 
-```bash
-# Quick test — should produce a response
-opencode run "Say hello in 5 different languages"
-claude -p "Say hello in 5 different languages"
-pi -p "Say hello in 5 different languages"
+ID                        VERSION      DISTRIBUTION   DESCRIPTION
+------------------------------------------------------------------------------------------
+...
+claude-acp                0.79.0       npx            ACP wrapper for Anthropic's Claude
+...
+codex-acp                 1.12.0       npx            ACP adapter for OpenAI's coding ass... [installed]
+...
+```
+
+Execute then this command to install it using the `ID` (see the first column of the registry table) passed to the command:
+```shell
+acp registry install claude-acp
+```
+
+> [!IMPORTANT]
+> If the AI agent is not available from the ACP registry, you can install it using an ACP Registry file that you specify to the command using the option: `--registry-file`.
+
+To select the model to be used from AI LLM provider (Google Vertex, Anthropic, IBM Bob, etc), set the corresponding environment variables
+
+```shell
+export GOOGLE_APPLICATION_CREDENTIALS=~/.config/gcloud/application_default_credentials.json
+export VERTEX_LOCATION=<YOUR_GOOGLE_CLOUD_LOCATION>
+export GOOGLE_CLOUD_PROJECT=<YOUR_GOOGLE_CLOUD_PROJECt_ID>
+export BOBSHELL_API_KEY=<BOBSHELL_API_KEY>
+...
+```
+and execute next the following command:
+```shell
+acp model list -a <ACP_AGENT_ID>
+
+Example:
+acp model list -a opencode
+acp model list -a claude-acp
+acp model list -a pi-acp
 ```
 
 ## Running Tests
 
-The process to execute the tests is pretty straightforward and just require to move under the `tests` folder, to set different system properties
-and environment variables as described hereafter. 
-
-> [!NOTE]
-> The prompt message to perform migrated is defined part of the project's code and don't need to be changed except if you want to test new SKILLS or adapt the 
-text to pass to LLM !
+The process to execute the tests is pretty straightforward and just require to:
+- open a terminal and move under the `tests` folder, 
+- define different system properties `-Dxxxx`
+as described hereafter. 
 
 ```bash
 cd tests/
 
-# Run all in-repo test projects with default model
-mvn test
+# Run all in-repo test projects (uses agent's default model)
+mvn test -Pintegration
+```
 
-# Select the agent to be used. Default is: claude
-mvn test -Dai.cmd=claude
-mvn test -Dai.cmd=pi
+The maven profile has been configured to use by default as agent: `claude`, the default model.
+
+You can, of course, change different parameters as listed at the section: [Configuration Properties](#configuration-properties)
+
+Examples 
+```shell
+# Select the agent to be used. Default is: claude-acp
+mvn test -Pintegration -Dai.agent=claude-acp
+mvn test -Pintegration -Dai.agent=pi-acp
 
 # Run a specific sample project
-mvn test -Dai.projects=spring-rest-api
+mvn test -Pintegration -Dai.projects=spring-rest-api
 
-# Set provider only (uses provider's default model)
-mvn test -Dai.provider=google-vertex-anthropic // opencode ai agent & Google Vertex AI
-mvn test -Dai.provider=vertex-anthropic        // pi ai agent & Google Vertex
+# Set model
+mvn test -Pintegration -Dai.model=anthropic/claude-opus-4-6
+mvn test -Pintegration -Dai.model=vertex-anthropic/claude-opus-4-6
+mvn test -Pintegration -Dai.model=claude-sonnet-4-5-20250514
 
-# Set model only
-mvn test -Dai.model=claude-opus-4-6@default // opencode ai agent & Google Vertex AI
-mvn test -Dai.model=claude-opus-4-6         // pi ai agent & Google Vertex AI
-
-# Set both provider and model explicitly (recommended for CI)
-mvn test -Dai.provider=google-vertex-anthropic -Dai.model=claude-opus-4-6@default // opencode
-mvn test -Dai.provider=vertex-anthropic -Dai.model=claude-opus-4-6 // pi
-
-mvn test -Dai.provider=anthropic -Dai.model=claude-sonnet-4-5-20250514
-mvn test -Dai.provider=openai -Dai.model=gpt-4o
-
-# Claude Code agent (uses Anthropic API directly, provider is implicit)
-mvn test -Dai.cmd=claude -Dai.model=claude-opus-4-6
-mvn test -Dai.cmd=claude -Dai.model=claude-sonnet-4-5-20250514
+# Claude Code agent (uses Anthropic API directly)
+mvn test -Pintegration -Dai.agent=claude-acp -Dai.model=claude-opus-4-6
 
 # Use compatibility migration strategy instead of full
-mvn test -Dai.strategy=compatibility
+mvn test -Pintegration -Dai.strategy=compatibility
 
 # Override timeout (seconds)
-mvn test -Dai.projects=spring-petclinic -Dai.timeout=900
+mvn test -Pintegration -Dai.projects=spring-petclinic -Dai.timeout=900
 
 # Combine options
-mvn test -Dai.projects=spring-jpa-crud -Dai.provider=anthropic -Dai.model=claude-sonnet-4-5-20250514 -Dai.timeout=600
+mvn test -Pintegration -Dai.projects=spring-jpa-crud -Dai.model=anthropic/claude-sonnet-4-5-20250514 -Dai.timeout=600
 ```
 
 ### Configuration Properties
@@ -89,98 +111,42 @@ The complete list of the configurations via `-D` flags:
 
 | Property          | Default                                                                                                                                                                                             | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 |-------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `ai.provider`     | `google-vertex-anthropic`                                                                                                                                                                           | Provider name (e.g. `anthropic`, `google`, `openai`, `vertex-anthropic`)                                                                                                                                                                                                                                                                                                                                                                                         |
-| `ai.model`        | `claude-opus-4-6@default`                                                                                                                                                                           | Model ID (e.g. `claude-sonnet-4-5-20250514`, `gemini-2.5-pro`)                                                                                                                                                                                                                                                                                                                                                                                                   |
+| `ai.model`        | *(empty)*                                                                                                                                                                                           | Model, optionally prefixed with provider (e.g. `anthropic/claude-opus-4-6`, `opus`, `claude-sonnet-4-5-20250514`)                                                                                                                                                                                                                                                                                                                                                |
 | `ai.strategy`     | `full`                                                                                                                                                                                              | Migration strategy: `full` or `compatibility`. The strategy will tell to AI if we would like to migrate Spring Boot to Quarkus or using the Spring compatibility later which has been developed for some spring components like [DI](https://quarkus.io/guides/spring-di#more-spring-guides), [Web](https://quarkus.io/guides/spring-web), [Data JPA](https://quarkus.io/guides/spring-data-jpa), [Data REST](https://quarkus.io/guides/spring-data-rest),  etc. |
 | `ai.prompt`       | Migration prompt message declared [here](https://github.com/quarkusio/skills/blob/bec909505664bf3405c39542a402c4ee8e5c5cf1/tests/src/test/java/io/quarkus/migration/runner/OpenCodeRunner.java#L55) | Override the default migration prompt message when it is needed to test a new and different skills                                                                                                                                                                                                                                                                                                                                                               |
 | `ai.timeout`      | `300`                                                                                                                                                                                               | Timeout per project in seconds                                                                                                                                                                                                                                                                                                                                                                                                                                   |
-| `ai.cmd`          | `claude`                                                                                                                                                                                            | Path to the AI binary (if not on PATH)                                                                                                                                                                                                                                                                                                                                                                                                                           | |
+| `ai.agent`          | `claude-acp`                                                                                                                                                                                            | Path to the AI binary (if not on PATH)                                                                                                                                                                                                                                                                                                                                                                                                                           | |
 | `ai.projects`     | *(all)*                                                                                                                                                                                             | Comma-separated list of projects to test (e.g. `dummy,spring-rest-api`).                                                                                                                                                                                                                                                                                                                                                                                         |
 | `ai.skills`       | *(from project.yaml)*                                                                                                                                                                               | Comma-separated list of skills (max 2). Accepts local names or GitHub URLs. Use `#branch/subpath` for URLs with branch disambiguation (see [Selecting a skill](#selecting-a-skill))                                                                                                                                                                                                                                                                               |
 | `ai.args`         | *(empty)*                                                                                                                                                                                           | Space-separated skill arguments substituted into `SKILL.md` placeholders (see [Skill arguments](#skill-arguments))                                                                                                                                                                                                                                                                                                                                               |
 | `runs`            | `1`                                                                                                                                                                                                 | Number of times to repeat the migration. Each run gets a fresh workdir, its own report, and a separate entry in `history.jsonl`. Useful for collecting data across multiple runs                                                                                                                                                                                                                                                                                 |
 | `runChecks`       | `true`                                                                                                                                                                                              | When `false`, skip verification checks after migration. Also skipped when the project has no checks defined                                                                                                                                                                                                                                                                                                                                                      |
 | `ai.review`       | `true`                                                                                                                                                                                              | When `false`, skip the skill review step after migration. Also skipped when checks are disabled or none defined                                                                                                                                                                                                                                                                                                                                                  |
-| `ai.sanitize`     | `false`                                                                                                                                                                                             | When `true`, pass `--sanitize` to strip sensitive content from exported opencode sessions                                                                                                                                                                                                                                                                                                                                                                        |
 
 ### Selecting a skill
 
-`ai.skills` accepts a local skill name or a GitHub URL:
+`ai.skills` accepts a skill name (resolved at the root of this project under `./skills` folder) or using a GitHub URL:
 
 ```bash
 # Local skill by name (looked up in skills/)
-mvn test -Dai.skills=jakarta-ee-to-quarkus
+mvn test -Pintegration -Dai.skills=migrate-spring-to-quarkus
+mvn test -Pintegration -Dai.skills="../tests/skills/dummy"
 
 # Remote skill — paste the GitHub URL as-is
-mvn test -Dai.skills=https://github.com/org/repo/tree/main/skills/custom-skill
+mvn test -Pintegration -Dai.skills=https://github.com/org/repo/tree/main/skills/custom-skill
 
 # Remote skill on a feature branch (branch name has no slashes — URL is unambiguous)
-mvn test -Dai.skills=https://github.com/org/repo/tree/new-feature-branch/skills/custom-skill
+mvn test -Pintegration -Dai.skills=https://github.com/org/repo/tree/new-feature-branch/skills/custom-skill
 
 # Remote skill when branch name contains '/' — use '#' to separate the URL from branch/subpath
-mvn test -Dai.skills=https://github.com/org/repo#branch/with/slashes/skills/custom-skill
+mvn test -Pintegration -Dai.skills=https://github.com/org/repo#branch/with/slashes/skills/custom-skill
 ```
 
 Remote clones are cached in `target/skills/` (or within the AI agent recommended folder) and cleaned with `mvn clean`.
 
-### Skill arguments
-
-Skills can declare **named arguments** in their YAML frontmatter. The test harness substitutes values passed via `-Dai.args` into the `SKILL.md` content before sending it to the AI agent.
-
-#### Declaring arguments in SKILL.md
-
-Add an `arguments:` list in the frontmatter:
-
-```yaml
----
-name: simple-analysis
-description: Analyzes source code using a specified analysis tool
-arguments:
-  - tool
-  - format
----
-
-# Instructions
-
-Analyze the code using `$tool` and output as `$format`.
-
-All arguments: $ARGUMENTS
-First arg: $0
-Second arg: $1
-```
-
-#### Placeholder reference
-
-| Placeholder   | Resolves to                                                                 |
-|---------------|-----------------------------------------------------------------------------|
-| `$tool`       | The value at the position matching the argument name in the frontmatter list (here: 1st value) |
-| `$format`     | The value at the 2nd position                                               |
-| `$0`, `$1`    | Positional — 1st and 2nd values regardless of name                          |
-| `$ARGUMENTS`  | The full `ai.args` string as-is                                             |
-
-Placeholders without a matching value are left intact (e.g. `$format` stays `$format` if only one arg is provided).
-
-#### Passing arguments
-
-Arguments are space-separated:
-
-```bash
-# Single argument — $tool / $0 → mtool
-mvn test -Dai.projects=dummy -Dai.skills=simple-analysis -Dai.args=mtool
-
-# Two arguments — $tool / $0 → mtool, $format / $1 → json
-mvn test -Dai.projects=dummy -Dai.skills=simple-analysis -Dai.args="mtool json"
-
-# No arguments — all placeholders remain unsubstituted
-mvn test -Dai.projects=dummy -Dai.skills=simple-analysis
-```
-
-> [!NOTE]
-> Skill argument substitution is currently supported by the **Claude Code** runner. Other runners receive `ai.args` but may not perform substitution in the same way.
-
 ### Examples
 
-Here are some examples that we currently use for local tests with Google Vertex AI combining the system properties and environment variables
+Here are some examples that we currently use for local tests using `Google Vertex AI` combining the system properties and environment variables
 
 1. Dummy project
 
@@ -192,13 +158,13 @@ export GOOGLE_CLOUD_PROJECT=your-google-cloud-project-id
 rm -rf target/runs
 
 // Dummy test to verify if the Agent works, is well configured
-mvn test \
+mvn test -Pintegration \
   -Dai.projects=dummy \
   -Dai.skills=../tests/skills/dummy \
   -Dai.prompt="Say Hello."
   
 // or using project.yaml definition
-mvn test -Dai.projects=dummy -Dai.prompt="Say Hello."  
+mvn test -P integration -Dai.projects=dummy -Dai.prompt="Say Hello."  
 ```
 Verify if there is under the following path `target/workdirs/dummy-quarkus/` a `HELLO.md` created!
   
@@ -211,49 +177,67 @@ export VERTEX_LOCATION=your-google-cloud-location
 export GOOGLE_CLOUD_PROJECT=your-google-cloud-project-id
 rm -rf target/runs
 
-mvn test \
+mvn test -Pintegration \
     -Dai.projects=spring-boot-todo-app \
     -Dai.strategy=compatibility \
-    -Dai.provider=google-vertex-anthropic \
-    -Dai.model=claude-opus-4-6@default \
+    -Dai.agent=claude-acp \
     -Dai.skills=migrate-spring-to-quarkus \
     -Dai.timeout=600
 ```
-> [!NOTE] You can remove the `-Dai.***` system properties having default values !
+
+## Running the ACP Agent using Main class
+
+Instead of `mvn test -Pintegration`, you can launch the agent directly using the `Main` class (`io.quarkus.ai.harness.launcher.Main`). This is useful for running from an IDE (IntelliJ, VS Code) or from the terminal without the JUnit overhead.
+
+### Using `mvn exec:exec`
+
+The `exec-maven-plugin` is pre-configured with a `default-cli` execution. All `-D` system properties are forwarded automatically:
+
+```bash
+cd tests/
+
+# Run the dummy project
+mvn exec:exec -Dai.projects=dummy -Dai.prompt="Say Hello." -Dai.agent=ibm-bob
+
+mvn exec:exec -Dai.projects=spring-rest-api -Dai.skills=migrate-spring-to-quarkus
+```
+
+### Running from an IDE
+
+In IntelliJ or VS Code, create a **Run Configuration** with:
+
+- **Main class:** `io.quarkus.ai.harness.launcher.Main`
+- **Working directory:** `tests/`
+- **VM options:** `-Dai.projects=dummy -Dai.prompt="Say Hello." -Dai.agent=claude-acp`
+
+The `Main` class also accepts `-D` flags as program arguments (e.g. `-Dai.projects=dummy`), so you can pass them either way.
+
+> [!TIP]
+> This approach gives you IDE debugging support — you can set breakpoints in `AgentSkillExecutor`, `SmallryeAcpRunner`, or any harness class.
 
 ## Benchmark: comparing skills
 
-Use `-Dai.skills` to benchmark up to 2 skills against one or more projects. Each skill is run independently with its own set of runs, and a benchmark summary report with delta comparison is generated at the end.
+Use `-Dai.skills` to benchmark up to 2 skills against one or more projects. Each skill is run independently with its own set of runs, and a benchmark summary report with delta comparison is generated at the end. Multiple values for `-Dai.skills` or `-Dai.projects` must be comma-separated.
 
 ### Single project, 2 skills
 
 ```bash
-# Compare two skills on the same project with 5 runs each
-mvn test \
+# Compare two skills on the same project with 2 runs each
+mvn test -Pintegration \
   -Dai.projects=spring-rest-api \
   -Dai.skills=migrate-spring-to-quarkus,migrate-spring-to-quarkus-mtool \
-  -Dai.cmd=claude \
-  -Druns=5
+  -Dai.agent=claude-acp \
+  -Druns=2
 ```
 
 ### Multiple projects, 2 skills
 
 ```bash
 # Benchmark across multiple projects
-mvn test \
+mvn test -Pintegration \
   -Dai.projects=spring-rest-api,spring-jpa-crud \
   -Dai.skills=migrate-spring-to-quarkus,migrate-spring-to-quarkus-mtool \
-  -Dai.cmd=claude \
-  -Druns=3
-```
-
-### Multiple projects, single skill
-
-```bash
-# Test a single skill across several projects
-mvn test \
-  -Dai.projects=spring-rest-api,spring-jpa-crud,spring-boot-todo-app \
-  -Dai.skills=migrate-spring-to-quarkus \
+  -Dai.agent=claude-acp \
   -Druns=3
 ```
 
@@ -313,12 +297,12 @@ Each test project goes through these phases:
 1. **Prepare** -- copies local source or clones external repo into `target/workdirs/<project>/` (source) and creates an empty `target/workdirs/<project>-quarkus/` (target)
 2. **Migrate** -- runs the AI agent with the migration skill, passing both source and target paths (output streams to console)
 3. **Check** -- runs verification checks against the target directory (builds, tests pass, no Spring deps, has Quarkus, starts up)
-4. **Review** -- forks the migration session and asks the agent to review the skill and suggest improvements (separate session, separate cost)
+4. **Review** -- resume a previous session and asks the agent to review the skill and suggest improvements (separate session, separate cost)
 5. **Record** -- appends results to `target/runs/history.jsonl`
 
 ## Test Output
 
-During a migration run, you'll see live-streamed output. The stream uses the AI agent json messages and shows
+During a migration run, you'll see live-streamed output. The stream uses the AI agent JSON messages and shows
 the messages, the tool executed, tokens and cost.
 
 ```
@@ -340,13 +324,13 @@ I'll start by loading the migration skill and exploring the project structure.
 
 Each run generates artifacts which are stored in two locations:
 
-**`target/runs/`** — run logs, named `<project>_<provider>_<model>_<strategy>.*`:
+**`target/runs/`** — run logs, named `<project>_<skill>_<model>_<strategy>.*`:
 
 | File | Description                                           |
 |------|-------------------------------------------------------|
-| `<run>.json.log` | Raw JSON streaming output (every event from AI agent) |
+| `<run>.json` | Raw JSON streaming output (every event from AI agent) |
 | `<run>.pretty.md` | Human-readable log (what you see in the console)      |
-| `<run>.session.jsonl` | AI agent session file                                 |
+| `<run>.report.md` | Report of the SKILL execution: info, usage, checks      |
 
 Example filenames:
 ```
@@ -358,19 +342,36 @@ target/runs/
 
 **`target/workdirs/<project>/`** -- read-only source copy; **`target/workdirs/<project>-quarkus/`** -- the migrated project (pom.xml, src/, etc.)
 
-You can resume a migration session to inspect or continue using AI agent command:
+## Running Checks independently
+
+The `CheckRunner` class (`io.quarkus.ai.harness.checks.CheckRunner`) runs the project verification checks (builds, tests-pass, no-spring-deps, etc.) **without re-running the AI agent**. This is useful when you want to re-verify a previous migration run after manual fixes.
+
+It expects a prior agent run to have produced a work directory under `target/workdirs/<project-name>`.
+
+### Using `mvn exec:exec@checks`
 
 ```bash
-// Opencode
-opencode run -c // To continue the last session
+cd tests/
 
-// get the ids of the session and pick up the last or the one to be used
-opencode session list --format json | jq '.[].id'
-opencode run -s <ID> // The id of session to continue. You can get them using
+# Run checks on a specific project
+mvn exec:exec@checks -Dai.projects=spring-rest-api
 
-// Pi AI agent 
-pi --session target/runs/spring-rest-api_claude-sonnet-4-5-20250514_full.session.jsonl
+# Run checks on multiple projects
+mvn exec:exec@checks -Dai.projects=spring-rest-api,spring-jpa-crud
+
+# Run checks on all projects
+mvn exec:exec@checks -Dai.enabled=all
 ```
+
+### Running from an IDE
+
+Create a **Run Configuration** with:
+
+- **Main class:** `io.quarkus.ai.harness.checks.CheckRunner`
+- **Working directory:** `tests/`
+- **VM options:** `-Dai.projects=spring-rest-api`
+
+If no work directory exists for a project (`target/workdirs/<project-name>`), CheckRunner reports an error and asks you to run the agent first.
 
 ## Test Projects
 
@@ -407,13 +408,13 @@ There are three ways to include disabled projects:
 
 ```bash
 # 1. Select a specific disabled project by name — bypasses the enabled flag
-mvn test -Dai.projects=dummy
+mvn test -Pintegration -Dai.projects=dummy
 
 # 2. Select multiple projects (enabled or disabled) — bypasses the enabled flag
-mvn test -Dai.projects=dummy,cargotracker,spring-rest-api
+mvn test -Pintegration -Dai.projects=dummy,cargotracker,spring-rest-api
 
 # 3. Include ALL projects regardless of enabled flag
-mvn test -Dai.enabled=all
+mvn test -Pintegration -Dai.enabled=all
 ```
 
 > [!NOTE]
@@ -456,13 +457,13 @@ Checks are **enabled by default**. Use the `-DrunChecks` flag to control them:
 
 ```bash
 # Run with checks (default)
-mvn test -Dai.projects=spring-rest-api
+mvn test -Pintegration -Dai.projects=spring-rest-api
 
 # Skip checks — useful for quick smoke tests or when iterating on skills
-mvn test -Dai.projects=spring-rest-api -DrunChecks=false
+mvn test -Pintegration -Dai.projects=spring-rest-api -DrunChecks=false
 
 # Checks are also auto-disabled when the project has none defined (e.g. dummy)
-mvn test -Dai.projects=dummy -Dai.prompt="Say Hello." -Dai.cmd=claude
+mvn test -Pintegration -Dai.projects=dummy -Dai.prompt="Say Hello." -Dai.agent=claude
 ```
 
 When checks are disabled, the console output shows the reason:
@@ -493,18 +494,6 @@ Results are appended to `target/runs/history.jsonl` — one JSON line per run:
   "review": {"tokens": 376929, "cost": 0.466, "summary": "The skill performed well..."}
 }
 ```
-
-Compare runs across models by grepping the history:
-
-```bash
-# See all runs
-cat target/runs/history.jsonl | python3 -m json.tool --json-lines
-
-# Compare scores across models
-grep '"score"' target/runs/history.jsonl
-```
-
-All run artifacts live under `target/` and are cleaned with `mvn clean`.
 
 ## HTML Report
 
@@ -569,14 +558,6 @@ checks:
 ```
 
 ## Troubleshooting
-
-### "No API key found" or authentication errors
-
-Make sure your provider is configured. Run `pi --list-models` — if it shows models for your provider, credentials are working.
-
-### pi hangs with no output
-
-Pi requires a pseudo-TTY. The test harness handles this via `script -q /dev/null` on macOS/Linux. If you see hangs, check that the `script` command is available.
 
 ### Tests timeout
 

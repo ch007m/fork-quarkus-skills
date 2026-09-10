@@ -13,7 +13,7 @@ import java.util.List;
  * <p>Usage:
  * <pre>
  * # Via Maven exec plugin
- * mvn exec:exec -Dai.projects=spring-rest-api -Dai.cmd=claude
+ * mvn exec:exec -Dai.projects=spring-rest-api -Dai.agent=claude
  *
  * # Via java -jar (requires maven-jar-plugin with Main-Class manifest)
  * java -Dai.projects=spring-rest-api -jar migration-tests.jar
@@ -22,6 +22,14 @@ import java.util.List;
 public class Main {
 
     public static void main(String[] args) throws Exception {
+        for (String arg : args) {
+            if (arg.startsWith("-D") && arg.contains("=")) {
+                String kv = arg.substring(2);
+                int eq = kv.indexOf('=');
+                System.setProperty(kv.substring(0, eq), kv.substring(eq + 1));
+            }
+        }
+
         AgentSkillExecutor executor = new AgentSkillExecutor();
 
         List<ProjectEntry> projects = executor.discoverProjects();

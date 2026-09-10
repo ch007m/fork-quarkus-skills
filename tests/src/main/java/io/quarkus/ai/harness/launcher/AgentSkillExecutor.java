@@ -1,7 +1,7 @@
 package io.quarkus.ai.harness.launcher;
 
 import io.quarkus.ai.harness.runner.AgentRunner;
-import io.quarkus.ai.harness.runner.RunnerRegistry;
+import io.quarkus.ai.harness.runner.acp.SmallryeAcpRunner;
 import tools.jackson.dataformat.yaml.YAMLMapper;
 import io.quarkus.ai.harness.checks.ProjectVerifier;
 import io.quarkus.ai.harness.config.ProjectConfig;
@@ -18,8 +18,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
 import static io.quarkus.ai.harness.config.AiConfig.*;
-import static io.quarkus.ai.harness.runner.RunnerRegistry.resolveModel;
-import static io.quarkus.ai.harness.runner.RunnerRegistry.resolveProvider;
 
 /**
  * Orchestrates the execution of AI agent skills against test projects.
@@ -129,9 +127,8 @@ public class AgentSkillExecutor {
      * @throws Exception if agent execution or work directory preparation fails
      */
     public ExecutionResult execute(ProjectConfig config, Path projectDir) throws Exception {
-        String provider = resolveProvider(aiCmd(), aiProvider());
-        String model = resolveModel(aiCmd(), aiModel());
-        String modelDisplay = aiModelDisplay(provider, model);
+        String model = aiModel();
+        String modelDisplay = aiModelDisplay(model);
 
         boolean projectDefinesChecks = config.checks() != null && !config.checks().isEmpty();
         boolean hasChecks = aiChecks() && projectDefinesChecks;
@@ -145,9 +142,8 @@ public class AgentSkillExecutor {
 
         System.out.println("\n" + "=".repeat(60));
         System.out.println("PROJECT: " + config.name());
-        System.out.println("  agent:    " + aiCmd());
-        System.out.println("  provider: " + (provider.isEmpty() ? "(n/a)" : provider));
-        System.out.println("  model:    " + model);
+        System.out.println("  agent:    " + aiAgent());
+        System.out.println("  model:    " + (model.isEmpty() ? "(agent default)" : model));
         System.out.println("  timeout:  " + aiTimeout() + "s");
         System.out.println("  checks:   " + (hasChecks ? config.checks().keySet() : !aiChecks() ? "disabled (runChecks=false)" : "disabled (none defined)"));
         System.out.println("  skills:   " + skills);
@@ -212,20 +208,19 @@ public class AgentSkillExecutor {
                 System.out.println("  target:   " + workDirs.targetDir());
                 System.out.println("  outputs:  " + outputDir.resolve(runName + ".*"));
 
-                MigrationResult result = new MigrationResult(aiCmd(),
+                MigrationResult result = new MigrationResult(aiAgent(),
                         config.name(), modelDisplay, aiStrategy(), skillRef);
                 result.setSourceDir(workDirs.sourceDir().toString());
                 result.setTargetDir(workDirs.targetDir().toString());
                 result.setRunName(runName);
                 result.setPrompt(aiPrompt());
-                result.setUserProvider(aiProvider());
                 result.setUserModel(aiModel());
                 result.setProjectType(config.type());
 
                 // 2. Run migration
-                AgentRunner runner = RunnerRegistry.getRunner(aiCmd(), provider, model, skillPath, aiStrategy(), timeout, aiPrompt(), aiArgs(), aiSanitize());
+                AgentRunner runner = new SmallryeAcpRunner(aiAgent(), model, skillPath, aiStrategy(), timeout, aiPrompt(), aiArgs());
 
-                System.out.printf("  Running migration agent: %s ...%n", aiCmd());
+                System.out.printf("  Running acp agent: %s ...%n", aiCmd());
                 AgentRunner.RunOutput output = runner.run(workDirs.sourceDir(), workDirs.targetDir(), outputDir, runName);
 
                 result.setAiExitCode(output.exitCode());
