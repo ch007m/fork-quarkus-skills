@@ -22,6 +22,14 @@ import java.util.List;
 public class Main {
 
     public static void main(String[] args) throws Exception {
+        for (String arg : args) {
+            if (arg.startsWith("-D") && arg.contains("=")) {
+                String kv = arg.substring(2);
+                int eq = kv.indexOf('=');
+                System.setProperty(kv.substring(0, eq), kv.substring(eq + 1));
+            }
+        }
+
         AgentSkillExecutor executor = new AgentSkillExecutor();
 
         List<ProjectEntry> projects = executor.discoverProjects();

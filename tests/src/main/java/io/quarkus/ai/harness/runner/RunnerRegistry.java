@@ -70,6 +70,11 @@ public enum RunnerRegistry {
         if (aiCmd == null) {
             throw new IllegalArgumentException("aiCmd cannot be null");
         }
-        return LOOKUP_MAP.get(aiCmd.toLowerCase().trim());
+        String key = aiCmd.toLowerCase().trim();
+        RunnerRegistry r = LOOKUP_MAP.get(key);
+        if (r == null && key.contains("/")) {
+            r = LOOKUP_MAP.get(key.substring(0, key.indexOf('/')));
+        }
+        return r;
     }
 }

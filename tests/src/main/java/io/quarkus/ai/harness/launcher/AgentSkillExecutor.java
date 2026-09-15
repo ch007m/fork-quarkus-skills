@@ -216,6 +216,7 @@ public class AgentSkillExecutor {
                 result.setProjectType(config.type());
 
                 // 2. Run migration
+                // TODO: aiCmd should be reviewed. When we will use acp, we only need to know which acp agent should be then selected ...
                 AgentRunner runner = RunnerRegistry.getRunner(aiCmd(), provider, model, skillPath, aiStrategy(), timeout, aiPrompt(), aiArgs(), aiSanitize());
 
                 System.out.printf("  Running migration agent: %s ...%n", aiCmd());
