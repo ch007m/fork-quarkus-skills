@@ -35,21 +35,30 @@ jobs:
       - name: Execute SKILL
         shell: bash
         env:
-          PROJECT_NAME: dummy
+          PROJECT_NAME: spring-rest-api
         run: |
           set -euo pipefail
 
           cd tests
+          
+          echo "Run the dummy SKILL to verify that everything is working with IBM Bob, key"
           mvn clean test -Pintegration \
             -Dai.agent=ibm-bob \
             -Dai.prompt="Say Hello" \
-            -Dai.projects=${PROJECT_NAME} \
-            -Dai.skills=../tests/skills/${PROJECT_NAME} \
+            -Dai.projects=dummy \
+            -Dai.skills=../tests/skills/dummy \
             -Dai.review=false
+          
+          echo "Migrate the project: ${PROJECT_NAME} and ask to AI to review it"
+          mvn clean test -Pintegration \
+            -Dai.agent=ibm-bob \
+            -Dai.projects=${PROJECT_NAME} \
+            -Dai.skills=migrate-spring-to-quarkus \
+            -Dai.review=true
 
       - name: Upload run reports
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7.0.0
         with:
           name: run-reports-${{ github.run_id }}
           path: tests/target/runs/
