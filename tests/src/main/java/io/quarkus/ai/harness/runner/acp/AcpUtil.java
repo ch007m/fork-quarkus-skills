@@ -21,7 +21,7 @@ final class AcpUtil {
         System.out.println(connectedMsg);
     }
 
-    static void logSessionCreated(NewSessionResponse session, String cwd) {
+    static void logSessionCreated(NewSessionResponse session) {
         if (session.configOptions() != null) {
             session.configOptions().stream()
                     .filter(opt -> "model".equalsIgnoreCase(opt.id()))

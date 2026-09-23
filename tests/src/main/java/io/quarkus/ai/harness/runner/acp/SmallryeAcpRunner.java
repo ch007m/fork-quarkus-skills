@@ -55,16 +55,16 @@ public class SmallryeAcpRunner extends AbstractRunner implements AgentRunner {
     }
 
     @Override
-    public RunOutput run(Path projectDir, Path outputDir, String runName) throws IOException, InterruptedException {
+    public RunOutput run(Path sourceDir, Path targetDir, Path reportingDir, String runName) throws IOException, InterruptedException {
         acpAgentMetadata = registryManager.getInstalledAgent(aiAgent);
         if (acpAgentMetadata == null) {
             throw new IllegalStateException(
                     String.format("ACP agent '%s' not found under ~/.acp/agents. Please install it first.", aiAgent));
         }
 
-        Files.createDirectories(outputDir);
-        Path jsonLogFile = outputDir.resolve(runName + ".json");
-        Path prettyFile = outputDir.resolve(runName + ".pretty.md");
+        Files.createDirectories(reportingDir);
+        Path jsonLogFile = reportingDir.resolve(runName + ".json");
+        Path prettyFile = reportingDir.resolve(runName + ".pretty.md");
 
         Instant start = Instant.now();
         int exitCode = 0;
@@ -81,9 +81,9 @@ public class SmallryeAcpRunner extends AbstractRunner implements AgentRunner {
                 AcpUtil.logInitialized(initResponse);
 
                 // 2. Create session
-                var sessionResponse = client.newSession(new NewSessionRequest(projectDir.toString(), List.of()));
+                var sessionResponse = client.newSession(new NewSessionRequest(targetDir.toString(), List.of()));
                 sessionId = sessionResponse.sessionId();
-                AcpUtil.logSessionCreated(sessionResponse, projectDir.toString());
+                AcpUtil.logSessionCreated(sessionResponse);
 
                 // 3. Extract model options from session config
                 if (sessionResponse.configOptions() != null) {
@@ -109,7 +109,7 @@ public class SmallryeAcpRunner extends AbstractRunner implements AgentRunner {
                 }
 
                 // 5. Send prompt with skill
-                String effectivePrompt = prompt.isEmpty() ? generateMigrationPrompt() : prompt;
+                String effectivePrompt = prompt.isEmpty() ? generateMigrationPrompt(sourceDir, targetDir) : prompt;
                 if (skillPath != null) {
                     effectivePrompt += "\n\nPlease read the skill: " + skillPath + " and follow its instructions.";
                 }
