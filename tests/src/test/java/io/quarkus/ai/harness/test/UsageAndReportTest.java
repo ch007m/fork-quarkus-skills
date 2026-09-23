@@ -60,7 +60,7 @@ class UsageAndReportTest {
     void extractUsageSumsUsage() {
         SmallryeAcpRunner runner = new SmallryeAcpRunner(
                 "claude-acp", "claude-opus-4-6", Path.of("/tmp/skill"),
-                "full", 300, "", "");
+                "full", 300, "");
 
         AgentRunner.UsageStats stats = runner.extractUsage(
                 Collections.singletonList(fixtureFile.toString()));
@@ -93,7 +93,7 @@ class UsageAndReportTest {
     void extractUsageNullFiles() {
         SmallryeAcpRunner runner = new SmallryeAcpRunner(
                 "claude-acp", null, Path.of("/tmp/skill"),
-                "full", 300, "", "");
+                "full", 300, "");
 
         AgentRunner.UsageStats stats = runner.extractUsage(null);
         assertEquals(0, stats.totalTokens());
@@ -105,7 +105,7 @@ class UsageAndReportTest {
     void extractUsageEmptyFiles() {
         SmallryeAcpRunner runner = new SmallryeAcpRunner(
                 "claude-acp", null, Path.of("/tmp/skill"),
-                "full", 300, "", "");
+                "full", 300, "");
 
         AgentRunner.UsageStats stats = runner.extractUsage(Collections.emptyList());
         assertEquals(0, stats.totalTokens());
@@ -251,7 +251,7 @@ class UsageAndReportTest {
     void endToEndFixtureToReport() throws IOException {
         SmallryeAcpRunner runner = new SmallryeAcpRunner(
                 "claude-acp", "claude-opus-4-6", Path.of("/tmp/skill"),
-                "full", 300, "Say Hello.", "");
+                "full", 300, "Say Hello.");
 
         AgentRunner.UsageStats stats = runner.extractUsage(
                 Collections.singletonList(fixtureFile.toString()));

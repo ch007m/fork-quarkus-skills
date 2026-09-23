@@ -50,8 +50,8 @@ public class SmallryeAcpRunner extends AbstractRunner implements AgentRunner {
     private final List<ModelOption> sessionModelOptions = new ArrayList<>();
 
     public SmallryeAcpRunner(String aiAgent, String model, Path skillPath, String strategy, int timeoutSeconds,
-            String prompt, String skillArgs) {
-        super(aiAgent, model, skillPath, strategy, timeoutSeconds, prompt, skillArgs);
+            String prompt) {
+        super(aiAgent, model, skillPath, strategy, timeoutSeconds, prompt);
     }
 
     @Override

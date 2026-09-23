@@ -102,7 +102,7 @@ class BenchmarkReportTest {
 
         SmallryeAcpRunner runner = new SmallryeAcpRunner(
                 "claude-acp", "claude-opus-4-6", Path.of("/tmp/skill"),
-                "full", 300, "", "");
+                "full", 300, "");
 
         // Extract from fixture 1 (skill A — efficient)
         AgentRunner.UsageStats stats1 = runner.extractUsage(

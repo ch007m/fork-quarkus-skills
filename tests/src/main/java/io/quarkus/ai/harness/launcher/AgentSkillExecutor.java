@@ -218,7 +218,7 @@ public class AgentSkillExecutor {
                 result.setProjectType(config.type());
 
                 // 2. Run migration
-                AgentRunner runner = new SmallryeAcpRunner(aiAgent(), model, skillPath, aiStrategy(), timeout, aiPrompt(), aiArgs());
+                AgentRunner runner = new SmallryeAcpRunner(aiAgent(), model, skillPath, aiStrategy(), timeout, aiPrompt());
 
                 System.out.printf("  Running acp agent: %s ...%n", aiCmd());
                 AgentRunner.RunOutput output = runner.run(workDirs.sourceDir(), workDirs.targetDir(), outputDir, runName);

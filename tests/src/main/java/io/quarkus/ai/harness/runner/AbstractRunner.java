@@ -15,18 +15,16 @@ public abstract class AbstractRunner {
     protected int timeoutSeconds;
     protected Path skillPath;
     protected String prompt;
-    protected String skillArgs;
     protected ObjectMapper JSON;
 
     public AbstractRunner(String aiAgent, String model, Path skillPath, String strategy, int timeoutSeconds,
-            String prompt, String skillArgs) {
+            String promp) {
         this.aiAgent = aiAgent;
         this.model = model;
         this.skillPath = skillPath;
         this.strategy = strategy;
         this.timeoutSeconds = timeoutSeconds;
         this.prompt = prompt;
-        this.skillArgs = skillArgs != null ? skillArgs : "";
         this.JSON = new ObjectMapper();
     }
 
