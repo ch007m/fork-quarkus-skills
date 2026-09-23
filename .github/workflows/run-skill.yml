@@ -46,12 +46,20 @@ jobs:
             -Dai.skills=../tests/skills/${PROJECT_NAME} \
             -Dai.review=false
 
-      - name: Upload reports
+      - name: Upload run reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: skill-reports-${{ github.run_id }}
-          path: |
-            tests/target/workdirs/**/
+          name: run-reports-${{ github.run_id }}
+          path: tests/target/runs/
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Upload AI workdir outputs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: workdir-outputs-${{ github.run_id }}
+          path: tests/target/workdirs/
           if-no-files-found: warn
           retention-days: 30
