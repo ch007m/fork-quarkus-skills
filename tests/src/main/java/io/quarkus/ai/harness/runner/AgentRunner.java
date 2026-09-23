@@ -11,7 +11,7 @@ public interface AgentRunner {
     RunOutput run(Path sourceDir, Path targetDir, Path outputDir, String runName) throws IOException, InterruptedException;
     UsageStats extractUsage(List<String> sessionFiles);
 
-    ReviewOutput review(String sessionFile, Path targetDir, Path outputDir,
+    ReviewOutput review(Path targetDir, Path outputDir,
                         String runName, Path skillPath,
                         Map<String, Boolean> checkResults) throws IOException, InterruptedException;
 

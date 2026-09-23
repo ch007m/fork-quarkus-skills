@@ -17,7 +17,7 @@
 
         <jackson-3.version>3.2.2</jackson-3.version>
         <junit.version>5.12.2</junit.version>
-        <smallrye-acp.version>0.1.2</smallrye-acp.version>
+        <smallrye-acp.version>0.2.0</smallrye-acp.version>
 
         <surefire-plugin.version>3.6.0</surefire-plugin.version>
         <maven-shade-plugin.version>3.6.2</maven-shade-plugin.version>

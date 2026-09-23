@@ -31,44 +31,11 @@ public abstract class AbstractRunner {
     }
 
     /**
-     * Add the model args to the command.
-     *
-     * @param cmd The Ai command to be enriched with the provider/model
-     */
-    protected abstract void addModelArgs(List<String> cmd);
-
-    /**
-     * Parse AI session JSONL files to extract token usage and cost.
+     * Parse AI session JSON files to extract token usage and cost.
      */
     public abstract AgentRunner.UsageStats extractUsage(List<String> sessionFiles);
 
-    public void writeOpenCodeConfiguration() {
-        // 1. Define the target file path relative to where the program is running
-        Path cfgPath = Paths.get("opencode.json");
-
-        // 2. Define the exact JSON string payload
-        // Note: We escape the internal double quotes (\") and use \n for the newline
-        String jsonPayload = "{\"$schema\": \"https://opencode.ai/config.json\",\"permission\": \"allow\"}\n";
-
-        try {
-            // 3. Write the string payload to the file
-            // CREATE: creates the file if it doesn't exist
-            // TRUNCATE_EXISTING: if it exists, overwrites it completely (matching the '>' behavior)
-            Files.writeString(
-                    cfgPath,
-                    jsonPayload,
-                    StandardOpenOption.CREATE,
-                    StandardOpenOption.TRUNCATE_EXISTING
-            );
-
-            System.out.println("Successfully wrote opencode config to: " + cfgPath.toAbsolutePath());
-
-        } catch (IOException e) {
-            System.err.println("Failed to write the OpenCode configuration file: " + e.getMessage());
-            e.printStackTrace();
-        }
-    }
-
+    // TODO: Do we still need this method. To be investigated
     public void copySkills(Path source, Path target) throws IOException {
         // Use try-with-resources to auto-close the stream
         try (var stream = Files.walk(source)) {
@@ -109,12 +76,6 @@ public abstract class AbstractRunner {
                 strategy, sourceDir, targetDir);
     }
 
-    /**
-     * Print a human-readable summary of a JSON streaming event. Focuses on high-level actions: tool calls, tool results, text
-     * output, turns. Each runner implements this for its own JSON streaming format.
-     */
-    protected abstract void printEvent(JsonNode event, BufferedWriter prettyWriter);
-
     /** Print to both System.out and the pretty log file. */
     protected void printBoth(String text, BufferedWriter prettyWriter) {
         System.out.println(text);
@@ -122,19 +83,6 @@ public abstract class AbstractRunner {
             synchronized (prettyWriter) {
                 prettyWriter.write(text);
                 prettyWriter.newLine();
-                prettyWriter.flush();
-            }
-        } catch (IOException ignored) {
-        }
-    }
-
-    /** Print (no newline) to both System.out and the pretty log file. */
-    protected void printBothRaw(String text, BufferedWriter prettyWriter) {
-        System.out.print(text);
-        System.out.flush();
-        try {
-            synchronized (prettyWriter) {
-                prettyWriter.write(text);
                 prettyWriter.flush();
             }
         } catch (IOException ignored) {

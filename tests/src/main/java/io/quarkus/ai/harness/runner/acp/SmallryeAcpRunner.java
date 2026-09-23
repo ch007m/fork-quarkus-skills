@@ -3,6 +3,7 @@ package io.quarkus.ai.harness.runner.acp;
 import io.quarkus.ai.harness.runner.AbstractRunner;
 import io.quarkus.ai.harness.runner.AgentRunner;
 import io.smallrye.agentclientprotocol.sdk.client.AcpClient;
+import io.smallrye.agentclientprotocol.sdk.client.AcpSessionResult;
 import io.smallrye.agentclientprotocol.sdk.client.AcpSyncClient;
 import io.smallrye.agentclientprotocol.sdk.client.transport.AgentParameters;
 import io.smallrye.agentclientprotocol.sdk.client.transport.StdioAcpClientTransport;
@@ -12,7 +13,6 @@ import io.smallrye.agentclientprotocol.sdk.spec.schema.v1.CloseSessionRequest;
 import io.smallrye.agentclientprotocol.sdk.spec.schema.v1.ContentChunk;
 import io.smallrye.agentclientprotocol.sdk.spec.schema.v1.InitializeResponse;
 import io.smallrye.agentclientprotocol.sdk.spec.schema.v1.NewSessionRequest;
-import io.smallrye.agentclientprotocol.sdk.spec.schema.v1.NewSessionResponse;
 import io.smallrye.agentclientprotocol.sdk.spec.schema.v1.PromptRequest;
 import io.smallrye.agentclientprotocol.sdk.spec.schema.v1.SessionConfigOption;
 import io.smallrye.agentclientprotocol.sdk.spec.schema.v1.SetSessionConfigOptionRequest;
@@ -41,6 +41,8 @@ public class SmallryeAcpRunner extends AbstractRunner implements AgentRunner {
     private final String PERMISSION_ALLOW_ALWAYS = "allow_always";
 
     private boolean streamingText;
+    private String sessionId;
+    private InstalledAgent acpAgentMetadata;
 
     private record ModelOption(String value, String name) {
     }
@@ -53,8 +55,145 @@ public class SmallryeAcpRunner extends AbstractRunner implements AgentRunner {
     }
 
     @Override
-    protected void addModelArgs(List<String> cmd) {
+    public RunOutput run(Path projectDir, Path outputDir, String runName) throws IOException, InterruptedException {
+        acpAgentMetadata = registryManager.getInstalledAgent(aiAgent);
+        if (acpAgentMetadata == null) {
+            throw new IllegalStateException(
+                    String.format("ACP agent '%s' not found under ~/.acp/agents. Please install it first.", aiAgent));
+        }
 
+        Files.createDirectories(outputDir);
+        Path jsonLogFile = outputDir.resolve(runName + ".json");
+        Path prettyFile = outputDir.resolve(runName + ".pretty.md");
+
+        Instant start = Instant.now();
+        int exitCode = 0;
+        streamingText = false;
+
+        System.out.println("─".repeat(60));
+
+        try (BufferedWriter logWriter = Files.newBufferedWriter(jsonLogFile);
+                BufferedWriter prettyWriter = Files.newBufferedWriter(prettyFile)) {
+
+            try (AcpSyncClient client = buildAcpClient(logWriter, prettyWriter, null)) {
+                // 1. Initialize
+                InitializeResponse initResponse = client.initialize();
+                AcpUtil.logInitialized(initResponse);
+
+                // 2. Create session
+                var sessionResponse = client.newSession(new NewSessionRequest(projectDir.toString(), List.of()));
+                sessionId = sessionResponse.sessionId();
+                AcpUtil.logSessionCreated(sessionResponse, projectDir.toString());
+
+                // 3. Extract model options from session config
+                if (sessionResponse.configOptions() != null) {
+                    for (SessionConfigOption cfg : sessionResponse.configOptions()) {
+                        if (("model".equalsIgnoreCase(String.valueOf(cfg.category()))
+                                || "model".equalsIgnoreCase(cfg.id())) && cfg.options() != null) {
+                            for (var opt : cfg.options()) {
+                                sessionModelOptions.add(new ModelOption(opt.value(), opt.name()));
+                            }
+                        }
+                    }
+                }
+
+                // 4. Resolve model AFTER session response (options are now captured)
+                String resolvedModel = resolveAcpModel();
+                if (!resolvedModel.isEmpty()) {
+                    System.out.println("  Model resolved: " + resolvedModel);
+                    try {
+                        client.setConfigOption(new SetSessionConfigOptionRequest("model", sessionId, resolvedModel));
+                    } catch (RuntimeException e) {
+                        System.out.printf("  Warning: agent %s does not support to execute: session/set_config_option, skipping model override\n", aiAgent);
+                    }
+                }
+
+                // 5. Send prompt with skill
+                String effectivePrompt = prompt.isEmpty() ? generateMigrationPrompt() : prompt;
+                if (skillPath != null) {
+                    effectivePrompt += "\n\nPlease read the skill: " + skillPath + " and follow its instructions.";
+                }
+                client.prompt(new PromptRequest(List.of(new TextContent(effectivePrompt)), sessionId));
+
+                // 6. Close session
+                if (sessionId != null) {
+                    try {
+                        client.closeSession(new CloseSessionRequest(sessionId));
+                    } catch (Exception e) {
+                        throw new RuntimeException("Failed to close session " + sessionId + ": " + e.getMessage());
+                    }
+                }
+
+            } catch (Exception e) {
+                e.printStackTrace();
+                throw new RuntimeException(e);
+            }
+
+            endTextStream(prettyWriter);
+
+            String summary = "\n" + "─".repeat(60) + "\n" +
+                    "  acp exit: " + exitCode + "  duration: " + Duration.between(start, Instant.now()).toSeconds() + "s";
+            printBoth(summary, prettyWriter);
+        }
+
+        Duration duration = Duration.between(start, Instant.now());
+        return new RunOutput(exitCode, duration, Collections.singletonList(jsonLogFile.toString()), jsonLogFile.toString());
+    }
+
+    @Override
+    public ReviewOutput review(Path projectDir, Path outputDir, String runName, Path skillPath,
+            Map<String, Boolean> checkResults) throws IOException, InterruptedException {
+
+        if (sessionId == null || sessionId.isBlank()) {
+            return new ReviewOutput("No session available for review.",
+                    new UsageStats(0, 0, 0, model != null ? model : "unknown"));
+        }
+
+        Files.createDirectories(outputDir);
+        Path jsonLogFile = outputDir.resolve(runName + ".review.json");
+        Path reviewFile = outputDir.resolve(runName + ".review.md");
+
+        Instant start = Instant.now();
+        var reviewText = new StringBuilder();
+        streamingText = false;
+
+        System.out.println("  ── Skill Review (ACP session/load) ───────────────────────────────");
+        System.out.println("  Resuming session: " + sessionId);
+
+        try (BufferedWriter logWriter = Files.newBufferedWriter(jsonLogFile);
+                BufferedWriter prettyWriter = Files.newBufferedWriter(reviewFile)) {
+
+            try (AcpSyncClient client = buildAcpClient(logWriter, prettyWriter, reviewText)) {
+
+                AcpSessionResult result = client.workflow()
+                        .withWorkspace(projectDir.toString())
+                        .resumeSession(sessionId)
+                        .onSessionLoaded(loaded -> System.out.println("  Session loaded successfully"))
+                        .model(resolveAcpModel())
+                        .prompt(reviewPrompt())
+                        //.prompt(reviewPromptWithChecks(checkResults))
+                        .run();
+
+                if (result.isResumedSession()) {
+                    System.out.println("  Session resumed successfully");
+                }
+
+            } catch (Exception e) {
+                e.printStackTrace();
+                return new ReviewOutput("Review failed: " + e.getMessage(),
+                        new UsageStats(0, 0, 0, model != null ? model : "unknown"));
+            }
+
+            endTextStream(prettyWriter);
+        }
+
+        String review = reviewText.toString().trim();
+        System.out.println();
+        System.out.println("  SKILL Review saved:  " + reviewFile);
+        System.out.println("  Duration: " + Duration.between(start, Instant.now()).toSeconds() + "s");
+        System.out.println("  ─────────────────────────────────────────────────────────");
+
+        return new ReviewOutput(review, new UsageStats(0, 0, 0, model != null ? model : "unknown"));
     }
 
     @Override
@@ -122,21 +261,9 @@ public class SmallryeAcpRunner extends AbstractRunner implements AgentRunner {
                 cacheRead, cacheWrite, List.of());
     }
 
-    @Override
-    protected void printEvent(JsonNode event, BufferedWriter prettyWriter) {
+    private AcpSyncClient buildAcpClient(BufferedWriter logWriter, BufferedWriter prettyWriter,
+            StringBuilder textCapture) {
 
-    }
-
-    @Override
-    public RunOutput run(Path projectDir, Path outputDir, String runName) throws IOException, InterruptedException {
-        // Check if the ACP agent id/name matches an installed agent under: ~/.acp/agents
-        InstalledAgent acpAgentMetadata = registryManager.getInstalledAgent(aiAgent);
-        if (acpAgentMetadata == null) {
-            throw new IllegalStateException(
-                    String.format("ACP agent '%s' not found under ~/.acp/agents. Please install it first.", aiAgent));
-        }
-
-        // Define the command to be executed: binary path + args
         var paramBuilder = AgentParameters.builder(acpAgentMetadata.cmd());
         if (!acpAgentMetadata.args().isEmpty()) {
             for (String a : acpAgentMetadata.args()) {
@@ -146,129 +273,52 @@ public class SmallryeAcpRunner extends AbstractRunner implements AgentRunner {
                 }
             }
         }
-        var params = paramBuilder.build();
 
-        // 2. Create the stdio transport
+        var transport = new StdioAcpClientTransport(paramBuilder.build());
         var requestTimeout = Duration.ofSeconds(Long.parseLong(ACP_REQUEST_TIMEOUT));
         var promptTimeout = Duration.ofSeconds(Long.parseLong(ACP_PROMPT_TIMEOUT));
-        var transport = new StdioAcpClientTransport(params);
 
-        Files.createDirectories(outputDir);
-        Path jsonLogFile = outputDir.resolve(runName + ".json");
-        Path prettyFile = outputDir.resolve(runName + ".pretty.md");
-
-        Instant start = Instant.now();
-        int exitCode = 0;
-        streamingText = false;
-
-        System.out.println("─".repeat(60));
-
-        try (BufferedWriter logWriter = Files.newBufferedWriter(jsonLogFile);
-                BufferedWriter prettyWriter = Files.newBufferedWriter(prettyFile)) {
-
-            transport.setRawInboundListener(msg -> {
-                try {
-                    logWriter.write(msg);
-                    logWriter.newLine();
-                    logWriter.flush();
-                } catch (IOException e) {
-                    throw new java.io.UncheckedIOException(e);
-                }
-            });
-            transport.setRawOutboundListener(msg -> {
-                try {
-                    logWriter.write(msg);
-                    logWriter.newLine();
-                    logWriter.flush();
-                } catch (IOException e) {
-                    throw new java.io.UncheckedIOException(e);
-                }
-            });
-
-            AcpClient.SyncBuilder clientBuilder = AcpClient.sync(transport)
-                    .withRequestTimeout(requestTimeout)
-                    .withPromptRequestTimeout(promptTimeout)
-                    .withNotifications(n -> n
-                            .onAgentMessage(chunk -> handleAgentMessageChunk(chunk, prettyWriter))
-                            .onToolCall(tc -> handleToolCall(tc, prettyWriter))
-                            .onUsage(usage -> handleUsage(usage, prettyWriter))
-                    )
-                    .withPermissionMode(PERMISSION_ALLOW_ALWAYS);
-
-            try (AcpSyncClient client = clientBuilder.build()) {
-                // 1. Initialize
-                InitializeResponse initResponse = client.initialize();
-                logInitialized(initResponse);
-
-                // 2. Create session
-                var sessionResponse = client.newSession(new NewSessionRequest(projectDir.toString(), List.of()));
-                String sessionId = sessionResponse.sessionId();
-                logSessionCreated(sessionResponse, projectDir.toString());
-
-                // 3. Extract model options from session config
-                if (sessionResponse.configOptions() != null) {
-                    for (SessionConfigOption cfg : sessionResponse.configOptions()) {
-                        if (("model".equalsIgnoreCase(String.valueOf(cfg.category()))
-                                || "model".equalsIgnoreCase(cfg.id())) && cfg.options() != null) {
-                            for (var opt : cfg.options()) {
-                                sessionModelOptions.add(new ModelOption(opt.value(), opt.name()));
-                            }
-                        }
-                    }
-                }
-
-                // 4. Resolve model AFTER session response (options are now captured)
-                String resolvedModel = resolveAcpModel();
-                if (!resolvedModel.isEmpty()) {
-                    System.out.println("  Model resolved: " + resolvedModel);
-                    try {
-                        client.setConfigOption(new SetSessionConfigOptionRequest("model", sessionId, resolvedModel));
-                    } catch (RuntimeException e) {
-                        System.out.printf("  Warning: agent %s does not support to execute: session/set_config_option, skipping model override\n",aiAgent);
-                    }
-                }
-
-                // 4. Send prompt with skill
-                String effectivePrompt = prompt.isEmpty() ? generateMigrationPrompt() : prompt;
-                if (skillPath != null) {
-                    effectivePrompt += "\n\nPlease read the skill: " + skillPath + " and follow its instructions.";
-                }
-                client.prompt(new PromptRequest(List.of(new TextContent(effectivePrompt)), sessionId));
-
-                // 5. Close session
-                if (sessionId != null) {
-                    try {
-                        client.closeSession(new CloseSessionRequest(sessionId));
-                    } catch (Exception e) {
-                        throw new RuntimeException("Failed to close session " + sessionId + ": " + e.getMessage());
-                    }
-                }
-
-            } catch (Exception e) {
-                exitCode = -1;
-                e.printStackTrace();
-                throw new RuntimeException(e);
+        transport.setRawInboundListener(msg -> {
+            try {
+                logWriter.write(msg);
+                logWriter.newLine();
+                logWriter.flush();
+            } catch (IOException e) {
+                throw new java.io.UncheckedIOException(e);
             }
+        });
+        transport.setRawOutboundListener(msg -> {
+            try {
+                logWriter.write(msg);
+                logWriter.newLine();
+                logWriter.flush();
+            } catch (IOException e) {
+                throw new java.io.UncheckedIOException(e);
+            }
+        });
 
-            endTextStream(prettyWriter);
-
-            String summary = "\n" + "─".repeat(60) + "\n" +
-                    "  acp exit: " + exitCode + "  duration: " + Duration.between(start, Instant.now()).toSeconds() + "s";
-            printBoth(summary, prettyWriter);
-        }
-
-        Duration duration = Duration.between(start, Instant.now());
-        return new RunOutput(exitCode, duration, Collections.singletonList(jsonLogFile.toString()), jsonLogFile.toString());
-    }
-
-    @Override
-    public ReviewOutput review(String sessionFile, Path projectDir, Path outputDir, String runName, Path skillPath,
-            Map<String, Boolean> checkResults) throws IOException, InterruptedException {
-        return null;
+        return AcpClient.sync(transport)
+                .withRequestTimeout(requestTimeout)
+                .withPromptRequestTimeout(promptTimeout)
+                .withNotifications(n -> n
+                        .onAgentMessage(chunk -> {
+                            if (textCapture != null) {
+                                String text = AcpUtil.extractText(chunk.content());
+                                if (!text.isEmpty()) {
+                                    textCapture.append(text);
+                                }
+                            }
+                            handleAgentMessageChunk(chunk, prettyWriter);
+                        })
+                        .onToolCall(tc -> handleToolCall(tc, prettyWriter))
+                        .onUsage(usage -> handleUsage(usage, prettyWriter))
+                )
+                .withPermissionMode(PERMISSION_ALLOW_ALWAYS)
+                .build();
     }
 
     private void handleAgentMessageChunk(ContentChunk chunk, BufferedWriter prettyWriter) {
-        String text = extractText(chunk.content());
+        String text = AcpUtil.extractText(chunk.content());
         if (text.isEmpty())
             return;
 
@@ -318,14 +368,52 @@ public class SmallryeAcpRunner extends AbstractRunner implements AgentRunner {
         }
     }
 
-    /**
-     * Resolves the model value to send via ACP {@code config/set} by matching the user's {@code -Dai.model}
-     * against the session's actual model options. The model value may include a provider prefix
-     * (e.g. {@code anthropic/claude-opus-4-6}) or be a short alias (e.g. {@code opus}).
-     *
-     * <p>If the agent exposes no model options (e.g. IBM Bob), returns empty — the agent uses its own default.
-     * If the agent exposes options but none match, throws with a hint to run {@code acp model list}.
-     */
+    private String reviewPromptWithChecks(Map<String, Boolean> checkResults) {
+        var checkSummary = new StringBuilder();
+        checkResults.forEach((check, passed) ->
+                checkSummary.append("  ").append(passed ? "✅" : "❌").append(" ").append(check).append("\n"));
+
+        return """
+                        You just completed a migration of a Spring Boot project to Quarkus. \
+                        Review the migration session above and evaluate how the skill instructions performed.
+
+                        Check results:
+                        %s
+                        Based on this migration run, write a brief review covering:
+
+                        1. **What went well** — which parts of the skill worked smoothly
+                        2. **What went wrong** — any errors, retries, or failed checks and why
+                        3. **Skill improvement suggestions** — concrete changes to the SKILL.md that would \
+                           help future migrations (missing instructions, wrong mappings, unclear steps, etc.)
+                        4. **Rating** — rate the skill 1-5 for this migration (5 = perfect, no issues)
+
+                        Be specific and actionable. Reference actual files and errors from the migration. \
+                        Read the current skill file at %s to see what instructions were given.
+
+                        Write your review as markdown.""".formatted(checkSummary.toString(),
+                skillPath.resolve("SKILL.md"));
+    }
+
+    private String reviewPrompt() {
+
+        return """
+                        You just completed a migration of a Spring Boot project to Quarkus. \
+                        Review the migration session above and evaluate how the skill instructions performed.
+
+                        Based on the migration results, write a brief review covering:
+
+                        1. **What went well** — which parts of the skill worked smoothly
+                        2. **What went wrong** — any errors, retries, or failed checks and why
+                        3. **Skill improvement suggestions** — concrete changes to the SKILL.md that would \
+                           help future migrations (missing instructions, wrong mappings, unclear steps, etc.)
+                        4. **Rating** — rate the skill 1-5 for this migration (5 = perfect, no issues)
+
+                        Be specific and actionable. Reference actual files and errors from the migration. \
+                        Read the current skill file at %s to see what instructions were given.
+
+                        Write your review as markdown.""".formatted(skillPath.resolve("SKILL.md"));
+    }
+
     private String resolveAcpModel() {
         if (model == null || model.isBlank())
             return "";
@@ -333,13 +421,11 @@ public class SmallryeAcpRunner extends AbstractRunner implements AgentRunner {
         if (sessionModelOptions.isEmpty())
             return "";
 
-        // 1. Exact match on option value
         for (ModelOption opt : sessionModelOptions) {
             if (opt.value().equalsIgnoreCase(model))
                 return opt.value();
         }
 
-        // 2. Fuzzy: find options whose value or name contains the model string
         String modelLower = model.toLowerCase();
         List<ModelOption> candidates = sessionModelOptions.stream()
                 .filter(opt -> opt.value().toLowerCase().contains(modelLower)
@@ -352,56 +438,8 @@ public class SmallryeAcpRunner extends AbstractRunner implements AgentRunner {
         if (candidates.size() > 1)
             return candidates.get(0).value();
 
-        // No match found
         throw new IllegalStateException(String.format(
                 "Model '%s' is not supported by the acp agent '%s'. Run: \"acp model list -a %s\" to see available models.",
                 model, aiAgent, aiAgent));
-    }
-
-    /**
-     * Logs agent metadata after a successful ACP initialization handshake: agent name, version, title, protocol version,
-     * capabilities, and auth methods.
-     */
-    private static void logInitialized(InitializeResponse init) {
-        var agentInfo = init.agentInfo();
-        String title = agentInfo.title();
-        String connectedMsg = (title != null && !title.isEmpty())
-                ? String.format("Connected to the ACP agent: %s - v%s - %s",
-                agentInfo.name(), agentInfo.version(), title)
-                : String.format("Connected to the ACP agent: %s - v%s",
-                        agentInfo.name(), agentInfo.version());
-        // TODO: To be reviewed
-        //logger.debugf(connectedMsg);
-        //logger.debugf("Protocol version: %s", init.protocolVersion());
-        //logger.debugf("Capabilities: %s", init.agentCapabilities());
-        //logger.debugf("Auth methods: %s", init.authMethods());
-    }
-
-    /**
-     * Logs session creation details: session ID, working directory, and the active model (if reported in the session config
-     * options).
-     */
-    private static void logSessionCreated(NewSessionResponse session, String cwd) {
-        // TODO: To be reviewed
-        //logger.debugf("Session created: %s with CWD: %s", session.sessionId(), cwd);
-        if (session.configOptions() != null) {
-            session.configOptions().stream()
-                    .filter(opt -> "model".equalsIgnoreCase(opt.id()))
-                    .findFirst()
-                    .ifPresent(opt -> System.out.println(
-                            "Agent model: " + opt.currentValue())); //logger.debugf("Agent model: %s", opt.currentValue()));
-        }
-    }
-
-    /**
-     * Extracts text from a content object. Handles both {@link Map}-based content (with a {@code "text"} key) and plain objects
-     * by calling {@code toString()}.
-     */
-    private static String extractText(Object content) {
-        if (content instanceof Map<?, ?> map) {
-            Object text = map.get("text");
-            return text != null ? text.toString() : content.toString();
-        }
-        return content != null ? content.toString() : "";
     }
 }

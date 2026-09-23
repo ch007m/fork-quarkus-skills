@@ -251,9 +251,12 @@ public class AgentSkillExecutor {
                 }
 
                 // 5. Run skill review (separate ai session)
-                if (aiReview() && hasChecks && !output.sessionFiles().isEmpty()) {
-                    AgentRunner.ReviewOutput reviewOutput = runner.review(
-                            output.sessionFiles().getFirst(), workDirs.targetDir(), outputDir, runName, skillPath, result.getChecks());
+                // TODO: Do we still need to check if we have session file to perform a review ?
+                // if (aiReview() && hasChecks && !output.sessionFiles().isEmpty()) {
+                // TODO: Do we have to pass the result.getChecks to IA to perform a review on it when some results could be: FAILED
+                // if (aiReview() && ! result.getChecks().isEmpty()) {
+                if (aiReview()) {
+                    AgentRunner.ReviewOutput reviewOutput = runner.review(workDirs.targetDir(), outputDir, runName, skillPath, result.getChecks());
                     result.setReview(reviewOutput.review());
                     result.setReviewTokens(reviewOutput.usage().totalTokens());
                     result.setReviewCost(reviewOutput.usage().totalCost());
