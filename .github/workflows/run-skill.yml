@@ -2,6 +2,8 @@ name: Execute AI SKILL using IBM Bob
 
 on:
   workflow_dispatch:
+  pull_request:
+    types: [opened, synchronize, reopened]
 
 env:
   JAVA_VERSION: '21'
@@ -32,12 +34,24 @@ jobs:
 
       - name: Execute SKILL
         shell: bash
+        env:
+          PROJECT_NAME: dummy
         run: |
           set -euo pipefail
-          
+
           cd tests
           mvn clean test -Pintegration \
             -Dai.prompt="Say Hello" \
-            -Dai.projects=dummy \
-            -Dai.skills=../tests/skills/dummy \
+            -Dai.projects=${PROJECT_NAME} \
+            -Dai.skills=../tests/skills/${PROJECT_NAME} \
             -Dai.review=false
+
+      - name: Upload reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: skill-reports-${{ github.run_id }}
+          path: |
+            tests/target/workdir/**/
+          if-no-files-found: warn
+          retention-days: 30
