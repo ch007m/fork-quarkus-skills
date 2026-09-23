@@ -1,0 +1,89 @@
+name: Run Bob Shell
+description: Install Smallrye ACP client, Bob Shell v2
+
+inputs:
+  bobshell_api_key:
+    description: Bob API key, exposed to Bob Shell as BOB_API_KEY.
+    required: true
+  bobshell_base_url:
+    description: Base URL for Bob Shell v2 packages (version is appended automatically).
+    required: false
+    default: "https://s3.us-south.cloud-object-storage.appdomain.cloud/bob-shell"
+  bobshell_version:
+    description: Version of Bob Shell v2.
+    required: false
+    default: "2.0.4"
+  smallrye_acp_version:
+    description: Version of Smallrye ACP Java client.
+    required: false
+    default: "0.2.0"
+
+outputs:
+  session_cost:
+    description: Session cost reported by Bob Shell.
+    value: ${{ steps.run.outputs.session_cost }}
+  duration_ms:
+    description: Duration of the Bob Shell session in milliseconds.
+    value: ${{ steps.run.outputs.duration_ms }}
+  tool_calls:
+    description: Number of tool calls made during the Bob Shell session.
+    value: ${{ steps.run.outputs.tool_calls }}
+  result_file:
+    description: Path to the JSON result file produced by Bob Shell.
+    value: ${{ steps.run.outputs.result_file }}
+
+runs:
+  using: composite
+  steps:
+    - name: Validate inputs
+      shell: bash
+      env:
+        API_KEY_PRESENT: ${{ inputs.bobshell_api_key != '' }}
+        INSTALL_URL_PRESENT: ${{ inputs.bobshell_base_url != '' }}
+      run: |
+        set -euo pipefail
+
+        if [[ "${API_KEY_PRESENT}" != "true" ]]; then
+          echo "::error title=Bob configuration::BOBSHELL_API_KEY is missing"
+          exit 1
+        fi
+        if [[ "${INSTALL_URL_PRESENT}" != "true" ]]; then
+          echo "::error title=Bob configuration::BOBSHELL_BASE_URL is missing"
+          exit 1
+        fi
+
+    - name: Install JBang
+      uses: jbangdev/setup-jbang@main
+
+    - name: Install Smallrye ACP client
+      shell: bash
+      run: |
+        set -euo pipefail
+        jbang app install --name acp "io.smallrye.ai:acp-java-client:${{ inputs.acp_version }}:runner"
+        acp -h
+
+    - name: Install IBM Bob agent
+      shell: bash
+      env:
+        BOBSHELL_VERSION: ${{ inputs.bobshell_version }}
+        BOBSHELL_BASE_URL: ${{ inputs.bobshell_base_url }}
+      run: |
+        set -euo pipefail
+
+        export BOBSHELL_INSTALL_URL="${BOBSHELL_BASE_URL}/bobshell-${BOBSHELL_VERSION}.tgz"
+
+        registry_template="${GITHUB_ACTION_PATH}/ibm-bob-acp-registry.json"
+        registry_file="${RUNNER_TEMP}/ibm-bob-acp-registry.json"
+
+        envsubst < "${registry_template}" > "${registry_file}"
+
+        echo "Installing IBM Bob v${BOBSHELL_VERSION} from ${BOBSHELL_INSTALL_URL}"
+        acp registry install --registry-file "${registry_file}" ibm-bob
+
+        echo "Verifying IBM Bob installation..."
+        if acp registry list | grep -q "ibm-bob"; then
+          echo "✅ ibm-bob agent installed successfully"
+        else
+          echo "::error title=Bob installation::ibm-bob agent not found after install"
+          exit 1
+        fi
