@@ -221,7 +221,7 @@ public class AgentSkillExecutor {
                 AgentRunner runner = new SmallryeAcpRunner(aiAgent(), model, skillPath, aiStrategy(), timeout, aiPrompt());
 
                 System.out.printf("  Running acp agent: %s ...%n", aiAgent());
-                AgentRunner.RunOutput output = runner.run(workDirs.sourceDir, workDirs.targetDir(), outputDir, runName);
+                AgentRunner.RunOutput output = runner.run(workDirs.sourceDir(), workDirs.targetDir(), outputDir, runName);
 
                 result.setAiExitCode(output.exitCode());
                 result.setDuration(output.duration());
