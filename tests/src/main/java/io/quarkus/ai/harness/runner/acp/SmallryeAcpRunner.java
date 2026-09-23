@@ -432,10 +432,7 @@ public class SmallryeAcpRunner extends AbstractRunner implements AgentRunner {
                         || opt.name().toLowerCase().contains(modelLower))
                 .toList();
 
-        if (candidates.size() == 1)
-            return candidates.get(0).value();
-
-        if (candidates.size() > 1)
+        if (!candidates.isEmpty())
             return candidates.get(0).value();
 
         throw new IllegalStateException(String.format(
