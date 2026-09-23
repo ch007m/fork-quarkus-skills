@@ -18,7 +18,7 @@ public abstract class AbstractRunner {
     protected ObjectMapper JSON;
 
     public AbstractRunner(String aiAgent, String model, Path skillPath, String strategy, int timeoutSeconds,
-            String promp) {
+            String prompt) {
         this.aiAgent = aiAgent;
         this.model = model;
         this.skillPath = skillPath;
