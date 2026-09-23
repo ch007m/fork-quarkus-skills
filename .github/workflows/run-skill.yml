@@ -35,6 +35,7 @@ jobs:
       - name: Execute SKILL
         shell: bash
         env:
+          BOBSHELL_API_KEY: ${{ secrets.BOBSHELL_API_KEY }}
           PROJECT_NAME: spring-rest-api
         run: |
           set -euo pipefail
