@@ -126,7 +126,6 @@ public class SmallryeAcpRunner extends AbstractRunner implements AgentRunner {
 
             } catch (Exception e) {
                 e.printStackTrace();
-                throw new RuntimeException(e);
             }
 
             endTextStream(prettyWriter);
