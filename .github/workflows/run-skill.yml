@@ -52,6 +52,6 @@ jobs:
         with:
           name: skill-reports-${{ github.run_id }}
           path: |
-            tests/target/workdir/**/
+            tests/target/workdirs/**/
           if-no-files-found: warn
           retention-days: 30
