@@ -41,6 +41,7 @@ jobs:
 
           cd tests
           mvn clean test -Pintegration \
+            -Dai.cmd=ibm-bob \
             -Dai.prompt="Say Hello" \
             -Dai.projects=${PROJECT_NAME} \
             -Dai.skills=../tests/skills/${PROJECT_NAME} \
