@@ -35,7 +35,8 @@ jobs:
         run: |
           set -euo pipefail
           
-          mvn -pl tests clean test -Pintegration \
+          cd tests
+          mvn clean test -Pintegration \
             -Dai.prompt="Say Hello" \
             -Dai.projects=dummy \
             -Dai.skills=../tests/skills/dummy \
