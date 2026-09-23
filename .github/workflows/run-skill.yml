@@ -1,0 +1,52 @@
+name: Execute AI SKILL using IBM Bob
+
+on:
+  workflow_dispatch:
+    inputs:
+      prompt:
+        description: 'Prompt to send to Bob Shell (default triggers skill from repo)'
+        required: false
+        default: '$prompt-with-skill-trigger'
+
+jobs:
+  run-bob:
+    name: Launch IBM Bobshell with prompt and skills
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out the repository without persisted credentials
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+
+      - name: Install and run IBM Bob
+        id: bob
+        uses: ./.github/actions/bob-action
+        with:
+          bobshell_api_key: ${{ secrets.BOBSHELL_API_KEY }}
+          bobshell_install_url: ${{ secrets.BOBSHELL_INSTALL_URL }}
+          prompt: ${{ inputs.prompt }}
+          max_cost: '3'
+
+      - name: Upload Bob result JSON
+        if: always() && steps.bob.outputs.result_file != ''
+        uses: actions/upload-artifact@v7
+        with:
+          name: bob-result
+          path: ${{ steps.bob.outputs.result_file }}
+          retention-days: 7
+
+      - name: Show HELLO.md content
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          echo "Read what IBM Bob and skill execution produced ..."
+          cat HELLO.md

@@ -1,0 +1,30 @@
+{
+  "version": "1.0.0",
+  "agents": [
+    {
+      "id": "ibm-bob",
+      "name": "IBM Bob",
+      "version": "2.0.4",
+      "description": "IBM Bob coding AI agent with Agent Client Protocol support.",
+      "website": "https://bob.ibm.com/",
+      "authors": [
+        "IBM Bob"
+      ],
+      "license": "Apache Licence",
+      "license_url": "https://raw.githubusercontent.com/IBM/ibm-bob/refs/heads/main/LICENSE",
+      "distribution": {
+        "npx": {
+          "package": "https://s3.us-south.cloud-object-storage.appdomain.cloud/bob-shell/bobshell-2.0.4.tgz",
+          "binName": "bob",
+          "args": [
+            "acp",
+            "--trust",
+            "--accept-license"
+          ]
+        }
+      },
+      "icon": ""
+    }
+  ],
+  "extensions": []
+}
