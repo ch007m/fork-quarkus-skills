@@ -2,8 +2,14 @@ name: Execute AI SKILL using IBM Bob
 
 on:
   workflow_dispatch:
-  pull_request:
-    types: [opened, synchronize, reopened]
+  workflow_run:
+    workflows: ["PR Metadata"]
+    types:
+      - completed
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.workflow_run.head_branch }}
+  cancel-in-progress: true
 
 env:
   JAVA_VERSION: '21'
@@ -11,15 +17,43 @@ env:
 jobs:
   run-bob:
     name: Run ACP Agent with Skill
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
       contents: read
+      actions: read
     steps:
-      - name: Check out the repository without persisted credentials
+      - name: Download PR metadata
+        if: github.event_name == 'workflow_run'
+        uses: actions/download-artifact@v7
+        with:
+          name: pr-meta
+          path: /tmp/pr-meta
+          run-id: ${{ github.event.workflow_run.id }}
+
+      - name: Parse PR metadata
+        if: github.event_name == 'workflow_run'
+        id: pr
+        run: |
+          echo "number=$(cat /tmp/pr-meta/pr_number)" >> "$GITHUB_OUTPUT"
+          echo "head_sha=$(cat /tmp/pr-meta/head_sha)" >> "$GITHUB_OUTPUT"
+
+      - name: Check out base branch (trusted action and workflow code)
         uses: actions/checkout@v6
         with:
+          ref: main
           persist-credentials: false
+          path: base
+
+      - name: Check out PR code under test
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ steps.pr.outputs.head_sha || github.sha }}
+          persist-credentials: false
+          path: pr
 
       - name: Set up JDK 21
         uses: actions/setup-java@v6
@@ -28,7 +62,7 @@ jobs:
           java-version: ${{ env.JAVA_VERSION }}
 
       - name: Install ACP client and IBM Bob agent
-        uses: ./.github/actions/acp-agent-action
+        uses: ./base/.github/actions/acp-agent-action
         with:
           bobshell_api_key: ${{ secrets.BOBSHELL_API_KEY }}
 
@@ -40,8 +74,8 @@ jobs:
         run: |
           set -euo pipefail
 
-          cd tests
-          
+          cd pr/tests
+
           echo "Run the dummy SKILL to verify that everything is working with IBM Bob, key"
           mvn clean test -Pintegration \
             -Dai.agent=ibm-bob \
@@ -49,7 +83,7 @@ jobs:
             -Dai.projects=dummy \
             -Dai.skills=../tests/skills/dummy \
             -Dai.review=false
-          
+
           echo "Migrate the project: ${PROJECT_NAME} and ask to AI to review it"
           mvn clean test -Pintegration \
             -Dai.agent=ibm-bob \
@@ -62,7 +96,7 @@ jobs:
         uses: actions/upload-artifact@v7.0.0
         with:
           name: run-reports-${{ github.run_id }}
-          path: tests/target/runs/
+          path: pr/tests/target/runs/
           if-no-files-found: warn
           retention-days: 30
 
@@ -71,6 +105,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: workdir-outputs-${{ github.run_id }}
-          path: tests/target/workdirs/
+          path: pr/tests/target/workdirs/
           if-no-files-found: warn
           retention-days: 30
