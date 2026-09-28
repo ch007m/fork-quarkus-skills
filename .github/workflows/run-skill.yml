@@ -3,12 +3,12 @@ name: Execute AI SKILL using IBM Bob
 on:
   workflow_dispatch:
   workflow_run:
-    workflows: ["PR Metadata"]
+    workflows: ["Build"]
     types:
       - completed
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.workflow_run.head_branch }}
+  group: ${{ github.workflow }}-${{ github.event.workflow_run.head_branch || github.ref }}
   cancel-in-progress: true
 
 env:
@@ -18,29 +18,14 @@ jobs:
   run-bob:
     name: Run ACP Agent with Skill
     if: >
-      github.event_name == 'workflow_dispatch' ||
-      github.event.workflow_run.conclusion == 'success'
+      github.repository_owner == 'quarkusio' &&
+      (github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
       contents: read
-      actions: read
     steps:
-      - name: Download PR metadata
-        if: github.event_name == 'workflow_run'
-        uses: actions/download-artifact@v7
-        with:
-          name: pr-meta
-          path: /tmp/pr-meta
-          run-id: ${{ github.event.workflow_run.id }}
-
-      - name: Parse PR metadata
-        if: github.event_name == 'workflow_run'
-        id: pr
-        run: |
-          echo "number=$(cat /tmp/pr-meta/pr_number)" >> "$GITHUB_OUTPUT"
-          echo "head_sha=$(cat /tmp/pr-meta/head_sha)" >> "$GITHUB_OUTPUT"
-
       - name: Check out base branch (trusted action and workflow code)
         uses: actions/checkout@v6
         with:
@@ -51,7 +36,7 @@ jobs:
       - name: Check out PR code under test
         uses: actions/checkout@v6
         with:
-          ref: ${{ steps.pr.outputs.head_sha || github.sha }}
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
           persist-credentials: false
           path: pr
 
@@ -63,8 +48,6 @@ jobs:
 
       - name: Install ACP client and IBM Bob agent
         uses: ./base/.github/actions/acp-agent-action
-        with:
-          bobshell_api_key: ${{ secrets.BOBSHELL_API_KEY }}
 
       - name: Execute SKILL
         shell: bash
