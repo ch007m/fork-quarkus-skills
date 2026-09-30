@@ -126,6 +126,7 @@ jobs:
         run: |
           cd base/tests
           mvn -B package -DskipTests
+          rm -rf "$GITHUB_WORKSPACE/pr/tests/target"
           mkdir -p "$GITHUB_WORKSPACE/pr/tests/target"
           find target -maxdepth 1 -name 'migration-tests-*.jar' -not -name 'original-*' \
             -exec cp {} "$GITHUB_WORKSPACE/pr/tests/target/" \;
