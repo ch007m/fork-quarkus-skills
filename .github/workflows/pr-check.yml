@@ -64,6 +64,6 @@ jobs:
           distribution: temurin
           cache: maven
 
-      - name: Build test harness (unit tests only, no AI integration)
+      - name: Build test AI framework (unit tests only, no AI integration)
         working-directory: tests
         run: mvn -B package
