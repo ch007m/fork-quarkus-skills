@@ -3,7 +3,7 @@ name: Execute AI SKILL using Smallrye ACP and IBM Bob agent
 on:
   workflow_dispatch:
   workflow_run:
-    workflows: ["Build"]
+    workflows: ["PR Check"]
     types:
       - completed
 
@@ -121,16 +121,16 @@ jobs:
           distribution: temurin
           java-version: ${{ env.JAVA_VERSION }}
 
-      - name: Download pre-built test harness JAR
+      - name: Build trusted test harness JAR using main branch
         if: github.event_name == 'workflow_run'
-        uses: actions/download-artifact@v7
-        with:
-          name: test-harness
-          run-id: ${{ github.event.workflow_run.id }}
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          path: pr/tests/target/
+        run: |
+          cd base/tests
+          mvn -B package -DskipTests
+          mkdir -p "$GITHUB_WORKSPACE/pr/tests/target"
+          find target -maxdepth 1 -name 'migration-tests-*.jar' -not -name 'original-*' \
+            -exec cp {} "$GITHUB_WORKSPACE/pr/tests/target/" \;
 
-      - name: Build test harness JAR (manual dispatch only)
+      - name: Build test harness JAR (manual dispatch)
         if: github.event_name == 'workflow_dispatch'
         working-directory: pr/tests
         run: mvn -B package -DskipTests
@@ -150,7 +150,8 @@ jobs:
       - name: Install ACP client and IBM Bob agent
         uses: ./base/.github/actions/acp-agent-action
         with:
-          bobshell_api_key: ${{ secrets.BOBSHELL_API_KEY }}
+          bobshell_version: '2.0.5'
+          smallrye_acp_version: '0.2.0'
 
       - name: Execute SKILL
         working-directory: pr/tests

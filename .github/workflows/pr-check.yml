@@ -1,4 +1,4 @@
-name: Build
+name: PR Check
 
 on:
   push:
@@ -15,7 +15,6 @@ env:
 jobs:
   check-paths:
     name: Detect changed paths
-    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     outputs:
       tests_changed: ${{ steps.detect.outputs.tests_changed }}
@@ -28,18 +27,25 @@ jobs:
       - name: Detect changed folders
         id: detect
         run: |
-          tests=$(git diff --name-only origin/${{ github.base_ref }}...HEAD -- tests/ | wc -l | tr -d ' ')
-          skills=$(git diff --name-only origin/${{ github.base_ref }}...HEAD -- skills/ | wc -l | tr -d ' ')
-          echo "tests_changed=$( [ "$tests" -gt 0 ] && echo true || echo false )" >> "$GITHUB_OUTPUT"
-          echo "skills_changed=$( [ "$skills" -gt 0 ] && echo true || echo false )" >> "$GITHUB_OUTPUT"
+          if [[ "${{ github.event_name }}" == "push" ]]; then
+            echo "tests_changed=true" >> "$GITHUB_OUTPUT"
+            echo "skills_changed=false" >> "$GITHUB_OUTPUT"
+          else
+            tests=$(git diff --name-only origin/${{ github.base_ref }}...HEAD -- tests/ | wc -l | tr -d ' ')
+            skills=$(git diff --name-only origin/${{ github.base_ref }}...HEAD -- skills/ | wc -l | tr -d ' ')
+            echo "tests_changed=$( [ "$tests" -gt 0 ] && echo true || echo false )" >> "$GITHUB_OUTPUT"
+            echo "skills_changed=$( [ "$skills" -gt 0 ] && echo true || echo false )" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Upload path metadata
+        if: github.event_name == 'pull_request'
         run: |
           mkdir -p /tmp/pr-meta
           echo "${{ steps.detect.outputs.tests_changed }}" > /tmp/pr-meta/tests_changed
           echo "${{ steps.detect.outputs.skills_changed }}" > /tmp/pr-meta/skills_changed
 
       - uses: actions/upload-artifact@v7
+        if: github.event_name == 'pull_request'
         with:
           name: pr-meta
           path: /tmp/pr-meta/
@@ -48,9 +54,6 @@ jobs:
   build-tests:
     name: Build test harness
     needs: check-paths
-    if: >
-      needs.check-paths.outputs.tests_changed == 'true' ||
-      needs.check-paths.outputs.skills_changed == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -64,19 +67,3 @@ jobs:
       - name: Build test harness (unit tests only, no AI integration)
         working-directory: tests
         run: mvn -B package
-
-      - name: Resolve JAR path
-        id: jar
-        working-directory: tests
-        run: |
-          VERSION=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)
-          ARTIFACT_ID=$(mvn help:evaluate -Dexpression=project.artifactId -q -DforceStdout)
-          JAR_NAME="${ARTIFACT_ID}-${VERSION}.jar"
-          echo "jar_path=tests/target/${JAR_NAME}" >> "$GITHUB_OUTPUT"
-
-      - name: Upload test harness JAR
-        uses: actions/upload-artifact@v7
-        with:
-          name: test-harness
-          path: ${{ steps.jar.outputs.jar_path }}
-          retention-days: 5
