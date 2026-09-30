@@ -39,7 +39,7 @@ Call the resolved value `<required_jdk>`.
 - [ ] Run `java -version` and capture the installed version.
 - [ ] If the installed version is **>= `<required_jdk>`**, record **PASS**, capture the exact version string for the summary table, and proceed to the next check.
 - [ ] If the installed version is **< `<required_jdk>`** or `java` is not found:
-    - **Warn the user**: "JDK `<required_jdk>` or later is required for this migration (resolved from: `<source>`). Currently installed: `<detected version or 'none'>`. Please install JDK `<required_jdk>` and ensure it is on your PATH before retrying."
+    - **Warn the user**: "JDK `<required_jdk>` or later is required for this migration (resolved from: `<source>`). Currently, installed: `<detected version or 'none'>`. Please install JDK `<required_jdk>` and ensure it is on your PATH before retrying."
     - Record as **FAIL (hard)**.
 
 ---
