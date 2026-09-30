@@ -123,28 +123,32 @@ jobs:
 
       - name: Build test AI framework JAR using main branch
         if: github.event_name == 'workflow_run'
-        run: |
-          cd base/tests
-          mvn -B package -DskipTests
-          rm -rf "$GITHUB_WORKSPACE/pr/tests/target"
-          mkdir -p "$GITHUB_WORKSPACE/pr/tests/target"
-          find target -maxdepth 1 -name 'migration-tests-*.jar' -not -name 'original-*' \
-            -exec cp {} "$GITHUB_WORKSPACE/pr/tests/target/" \;
+        working-directory: base/tests
+        run: mvn -B package -DskipTests
 
       - name: Build test AI framework JAR (manual dispatch)
         if: github.event_name == 'workflow_dispatch'
         working-directory: pr/tests
         run: mvn -B package -DskipTests
 
-      - name: Resolve JAR path
-        id: jar
-        working-directory: pr/tests
+      - name: Resolve execution context
+        id: ctx
         run: |
-          JAR_PATH=$(find target -maxdepth 1 -name 'migration-tests-*.jar' -not -name 'original-*' | head -1)
+          if [[ "${{ github.event_name }}" == "workflow_run" ]]; then
+            TESTS_DIR="${GITHUB_WORKSPACE}/base/tests"
+          else
+            TESTS_DIR="${GITHUB_WORKSPACE}/pr/tests"
+          fi
+          SKILLS_DIR="${GITHUB_WORKSPACE}/pr/skills"
+
+          JAR_PATH=$(find "${TESTS_DIR}/target" -maxdepth 1 -name 'migration-tests-*.jar' -not -name 'original-*' | head -1)
           if [[ -z "$JAR_PATH" ]]; then
-            echo "::error::Test AI framework JAR not found in target/"
+            echo "::error::Test AI framework JAR not found"
             exit 1
           fi
+
+          echo "tests_dir=${TESTS_DIR}" >> "$GITHUB_OUTPUT"
+          echo "skills_dir=${SKILLS_DIR}" >> "$GITHUB_OUTPUT"
           echo "jar_path=${JAR_PATH}" >> "$GITHUB_OUTPUT"
           echo "Found JAR: ${JAR_PATH}"
 
@@ -155,26 +159,28 @@ jobs:
           smallrye_acp_version: '0.2.0'
 
       - name: Execute SKILL
-        working-directory: pr/tests
         env:
           BOBSHELL_API_KEY: ${{ secrets.BOBSHELL_API_KEY }}
           PROJECT_NAME: spring-rest-api
-          JAR_PATH: ${{ steps.jar.outputs.jar_path }}
+          JAR_PATH: ${{ steps.ctx.outputs.jar_path }}
+          TESTS_DIR: ${{ steps.ctx.outputs.tests_dir }}
+          SKILLS_DIR: ${{ steps.ctx.outputs.skills_dir }}
         run: |
           set -euo pipefail
+          cd "${TESTS_DIR}"
 
           echo "Run the dummy SKILL to verify that everything is working with IBM Bob"
           java -Dai.agent=ibm-bob \
                -Dai.prompt="Say Hello" \
                -Dai.projects=dummy \
-               -Dai.skills=../tests/skills/dummy \
+               -Dai.skills="${TESTS_DIR}/skills/dummy" \
                -Dai.review=false \
                -jar "${JAR_PATH}"
 
           echo "Migrate the project: ${PROJECT_NAME} and ask AI to review it"
           java -Dai.agent=ibm-bob \
                -Dai.projects=${PROJECT_NAME} \
-               -Dai.skills=migrate-spring-to-quarkus \
+               -Dai.skills="${SKILLS_DIR}/migrate-spring-to-quarkus" \
                -Dai.review=true \
                -jar "${JAR_PATH}"
 
@@ -199,7 +205,7 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: run-reports-${{ github.run_id }}
-          path: pr/tests/target/runs/
+          path: ${{ steps.ctx.outputs.tests_dir }}/target/runs/
           if-no-files-found: warn
           retention-days: 30
 
@@ -208,6 +214,6 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: workdir-outputs-${{ github.run_id }}
-          path: pr/tests/target/workdirs/
+          path: ${{ steps.ctx.outputs.tests_dir }}/target/workdirs/
           if-no-files-found: warn
           retention-days: 30
