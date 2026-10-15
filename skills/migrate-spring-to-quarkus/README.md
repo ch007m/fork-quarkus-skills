@@ -4,7 +4,7 @@ Modular, gate-driven migration of Spring Boot applications to Quarkus. Supports 
 
 ## Quick Start
 
-From your Spring Boot project directory:
+Open a terminal and from your Spring Boot project directory, launch an AI agent using the following prompt message:
 
 ```
 Migrate this Spring Boot project to Quarkus
@@ -25,7 +25,7 @@ The skill will analyze your project, ask you to choose a strategy, and execute t
 
 If you run the skill without any configuration, it will ask you to choose a migration strategy and confirm the Quarkus and Java versions before starting.
 
-### Project config file
+### Autonomous mode
 
 Add a `.quarkus-migration.yml` file to your project root to pre-configure the migration:
 
@@ -70,14 +70,13 @@ If multiple sources provide a value for the same decision, the first match wins:
 
 ## How It Works
 
-The skill follows a 6-step process:
+The skill follows a 5-step process:
 
 1. **Analyze** — scans your project (build files, Java code, config, templates, tests)
 2. **Choose strategy** — resolved from config or asked interactively
 3. **Execute modules** — runs each migration module through an automatic gate system
-4. **Verify** — 6 post-migration checks (builds, no Spring deps, tests pass, app starts, etc.)
+4. **Verify** — 6 post-migration checks (builds, no Spring deps, tests pass, app starts and smoke-tests.)
 5. **Review** — self-reflection report with what migrated, what didn't, and why
-6. **Commit** — optional git branch + draft PR workflow
 
 ### Gate System
 
@@ -89,7 +88,7 @@ Each module has a gate condition that determines whether it runs:
 | **planning** | Always — runs after prerequisite; generates `migration-spec.yaml` |
 | **build** | Spring Boot starters/plugins found in build file |
 | **code** | Spring annotations found in Java sources |
-| **frontend** | Thymeleaf/JSP templates or static resources found |
+| **frontend** | Thymeleaf, JSP, FreeMarker, JSF views or static resources found |
 | **testing** | Spring test annotations found in test sources |
 | **cleanup** | Always — runs after all other modules |
 
@@ -114,7 +113,15 @@ skills/migrate-spring-to-quarkus/
 │   │   ├── code.md                   #   Java code: annotations, DI, REST, Data, Security
 │   │   └── messaging.md              #   Messaging migration: Kafka, RabbitMQ, JMS -> Quarkus
 │   ├── frontend/
-│   │   └── frontend.md               #   Thymeleaf/JSP templates, static resources
+│   │   ├── frontend.md               #   View layer dispatcher & static resources
+│   │   ├── thymeleaf.md              #   Thymeleaf -> Qute
+│   │   ├── freemarker.md             #   FreeMarker router (Qute vs quarkus-freemarker)
+│   │   ├── freemarker-qute.md        #   FreeMarker -> Qute
+│   │   ├── freemarker-quarkus.md     #   FreeMarker -> quarkus-freemarker extension
+│   │   ├── jsp.md                    #   JSP -> Qute
+│   │   ├── jsf.md                    #   JSF router (Qute vs MyFaces)
+│   │   ├── jsf-qute.md               #   JSF -> Qute
+│   │   └── jsf-myfaces.md            #   JSF -> MyFaces
 │   ├── testing/
 │   │   └── testing.md                #   Test migration: @SpringBootTest -> @QuarkusTest
 │   ├── cleanup/
@@ -125,19 +132,6 @@ skills/migrate-spring-to-quarkus/
     ├── annotation-map.md             #   Spring -> Quarkus annotation mapping
     └── config-map.md                 #   Spring -> Quarkus config property mapping
 ```
-
-## Running Individual Modules
-
-You can run a single module without executing the full migration:
-
-```
-Run only the build module
-```
-```
-Re-run the frontend module
-```
-
-The module will use the current project state and the chosen strategy (if already decided).
 
 ## Post-Migration Checks
 
@@ -151,14 +145,6 @@ After all modules complete, the skill runs 6 verification checks:
 | 4 | Tests pass | All tests pass with `@QuarkusTest` |
 | 5 | Starts up | `mvn quarkus:dev` starts, health endpoint returns UP |
 | 6 | No leftover templates | No remaining Thymeleaf/JSP references |
-
-## Git Workflow (optional)
-
-If your project is a git repo, the skill can isolate each migration in its own branch:
-
-- Branch: `migration/run-01`, `migration/run-02`, ...
-- Single commit with all changes + migration report
-- Draft PR against `main` for review (never merged — serves as a permanent diff record)
 
 ## Related
 
