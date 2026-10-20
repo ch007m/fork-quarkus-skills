@@ -8,7 +8,7 @@ import java.util.Date;
 
 public class GreetingTools {
 
-    SimpleDateFormat formatter = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss");
+    private static final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
 
     @Tool(description = "Greet With Hello a user by name")
     public String greetHello(@ToolArg(description = "The name", defaultValue = "Quarkus") String name) {
