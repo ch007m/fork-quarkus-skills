@@ -12,7 +12,7 @@ public class GreetingTools {
 
     @Tool(description = "Greet With Hello a user by name")
     public String greetHello(@ToolArg(description = "The name", defaultValue = "Quarkus") String name) {
-        return "Hello from the MCP server, " + name + "! - " + formatter.format(new Date());
+        return "Hello from the MCP server, " + name + "! - " + formatter.format(LocalDateTime.now());
     }
 
     @Tool(description = "Greet with Bye a user by name")
