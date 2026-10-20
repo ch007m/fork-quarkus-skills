@@ -41,7 +41,7 @@ Derive the following from the **Fixed versions** and **Prerequisite** sections a
 
 ```bash
 curl -sSL -o /tmp/<artifactId>.zip \
-  "https://code.quarkus.io/api/download?S=io.quarkus.platform:<quarkus-stream>&j=<jdk>&b=MAVEN&nc=true&g=<groupId>&a=<artifactId>&v=<version>&e=io.quarkiverse.mcp:quarkus-mcp-server-http&e=io.quarkiverse.mcp:quarkus-mcp-server-stdio&e=io.quarkiverse.mcp:quarkus-mcp-server-hibernate-validator"
+  "https://code.quarkus.io/api/download?S=io.quarkus.platform:<quarkus-stream>&j=<jdk>&b=MAVEN&nc=true&g=<groupId>&a=<artifactId>&v=<version>&e=io.quarkiverse.mcp:quarkus-mcp-server-http&e=io.quarkiverse.mcp:quarkus-mcp-server-stdio"
 ```
 
 Then extract the archive into the target directory:
@@ -53,8 +53,8 @@ unzip -o /tmp/<artifactId>.zip -d <target-directory>
 The generated project already includes:
 - Quarkus BOM (`io.quarkus.platform:quarkus-bom` at the fixed Quarkus platform version)
 - MCP server BOM (managed via the platform)
-- `quarkus-mcp-server-http`, `quarkus-mcp-server-stdio`, and `quarkus-mcp-server-hibernate-validator` dependencies
-- `quarkus-arc` and `quarkus-junit` (test)
+- `quarkus-mcp-server-http` and `quarkus-mcp-server-stdio` dependencies
+- `quarkus-junit` (test)
 - Maven wrapper, Dockerfiles, Surefire & Failsafe plugins
 
 ---
