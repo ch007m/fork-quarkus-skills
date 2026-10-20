@@ -1,6 +1,6 @@
-# create-quarkus-mcp-server
+# Scaffold a Quarkus MCP server
 
-A skill that scaffolds a complete Quarkus MCP server project from scratch.
+A skill that scaffolds a complete Quarkus MCP server project: stdio or HTTP transport from scratch.
 
 ## What it does
 

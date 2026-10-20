@@ -1,5 +1,5 @@
 ---
-name: create-quarkus-mcp-server
+name: scaffold-quarkus-mcp-server
 description: Scaffold a new Quarkus MCP server project with greeting tools, integration tests, and README. Use when the user wants to create, scaffold, or generate a Quarkus MCP server, mentions "quarkus mcp", "quarkus mcp server", "quarkiverse mcp", or asks to generate a Quarkus project with MCP tools.
 ---
 
