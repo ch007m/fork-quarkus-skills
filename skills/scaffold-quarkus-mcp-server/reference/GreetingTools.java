@@ -17,6 +17,6 @@ public class GreetingTools {
 
     @Tool(description = "Greet with Bye a user by name")
     public String greetBye(@ToolArg(description = "The name", defaultValue = "Quarkus") String name) {
-        return "Bye from the MCP server, " + name + "! - " + formatter.format(new Date());
+        return "Bye from the MCP server, " + name + "! - " + formatter.format(LocalDateTime.now());
     }
 }
