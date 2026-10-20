@@ -106,10 +106,13 @@ Use `write_file` to create the file. Do **not** alter the `@Tool` or `@ToolArg` 
 
 ## Step 5 — Create the test class
 
+The reference files are organized by transport under `reference/stdio/` and `reference/http/`.
+Use the subfolder matching the transport chosen in Step 1.
+
 **If transport is `stdio`:**
 
 Write the file at `src/test/java/<groupId-as-path>/CheckToolsIT.java`.
-Use the reference file at `reference/CheckToolsIT.java` as the exact template —
+Use the reference file at `reference/stdio/CheckToolsIT.java` as the exact template —
 replace the package declaration and update the runner jar filename:
 
 ```java
@@ -122,11 +125,11 @@ This is a Failsafe integration test — it launches the über-jar as a subproces
 **If transport is `http`:**
 
 Write the file at `src/test/java/<groupId-as-path>/CheckToolsTest.java`.
-Use the reference file at `reference/CheckToolsTest.java` as the exact template —
+Use the reference file at `reference/http/CheckToolsTest.java` as the exact template —
 replace the package declaration to match the actual `groupId`.
 
 This is a `@QuarkusTest` — it starts the Quarkus application and calls both `greetHello` and
-`greetBye` via the MCP SSE endpoint using `McpAssured.newConnectedSseClient()`.
+`greetBye` via the MCP Streamable HTTP endpoint using `McpStreamableTestClient`.
 
 Use `write_file` to create the file.
 
@@ -134,8 +137,12 @@ Use `write_file` to create the file.
 
 ## Step 6 — Create `README.md`
 
-Use `reference/README.md` as the template. Replace all `{{artifactId}}` and `{{version}}`
-placeholders with the actual values collected in Step 1. Write the file to the project root.
+Use the transport-specific README template:
+- **stdio**: `reference/stdio/README.md`
+- **http**: `reference/http/README.md`
+
+Replace all `{{artifactId}}` and `{{version}}` placeholders with the actual values collected
+in Step 1. Write the file to the project root.
 
 ---
 

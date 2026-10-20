@@ -3,6 +3,22 @@
 A Quarkus-based MCP (Model Context Protocol) server exposing `greetHello` and `greetBye` tools via the
 [quarkus-mcp-server](https://github.com/quarkiverse/quarkus-mcp-server) extension.
 
+The project supports **two transports** — choose one via Maven profiles:
+
+| Profile | Transport | Packaging | Dependency |
+|---------|-----------|-----------|------------|
+| `stdio` (default) | Standard I/O | uber-jar | `quarkus-mcp-server-stdio` |
+| `http` | Streamable HTTP (`/mcp`) | thin jar | `quarkus-mcp-server-http` |
+
+---
+
+## Available tools
+
+| Tool name | Description | Parameter |
+|-----------|-------------|-----------|
+| `greetHello` | Greet a user with Hello | `name` (string, default: `"Quarkus"`) |
+| `greetBye` | Greet a user with Bye | `name` (string, default: `"Quarkus"`) |
+
 ---
 
 ## Prerequisites
@@ -14,38 +30,133 @@ A Quarkus-based MCP (Model Context Protocol) server exposing `greetHello` and `g
 
 ---
 
-## Build the über-jar
+## stdio transport (default)
+
+### Build
 
 ```bash
-mvn package -DskipTests
+mvn package
 ```
 
-The runner jar is created at:
+This produces an uber-jar at `target/quarkus-mcp-server-1.0.0-SNAPSHOT-runner.jar`.
 
-```
-target/quarkus-mcp-server-1.0.0-SNAPSHOT-runner.jar
-```
-
----
-
-## Run locally
+### Run
 
 ```bash
 java -jar target/quarkus-mcp-server-1.0.0-SNAPSHOT-runner.jar
 ```
 
-The server starts and listens for MCP connections on stdio (default HTTP transport).
+The server reads JSON-RPC requests from stdin and writes responses to stdout.
+
+### Test
+
+The `stdio` profile runs integration tests (`CheckToolsIT`) via Maven Failsafe.
+The test launches the uber-jar as a subprocess and calls tools over the stdio protocol.
+
+```bash
+mvn verify
+```
+
+> Unit tests are skipped in this profile. Integration tests are enabled by default (`skipITs=false`).
+
+### Register with an MCP client
+
+#### Claude Desktop (`claude_desktop_config.json`)
+
+```json
+{
+  "mcpServers": {
+    "quarkus-mcp-server": {
+      "command": "java",
+      "args": ["-jar", "/path/to/target/quarkus-mcp-server-1.0.0-SNAPSHOT-runner.jar"]
+    }
+  }
+}
+```
+
+#### Use with SmallRye ACP agent (stdio)
+
+The [SmallRye ACP Client](https://github.com/smallrye/smallrye-acp-client) is a Java CLI implementing the
+[Agent Client Protocol](https://github.com/agentclientprotocol/agent-client-protocol) (ACP).
+It can launch this MCP server as a stdio subprocess and expose its tools to any ACP-compatible coding agent.
+
+- Install the ACP CLI (JBang)
+
+```bash
+jbang app install --name acp io.smallrye.ai:acp-java-client:0.1.0:runner
+```
+
+- Run with inline MCP server config
+
+```bash
+acp run \
+  -a claude-acp \
+  --mcp-server-config '{"type":"stdio","name":"greet-tools","command":"java","args":["-jar", "/path/to/target/quarkus-mcp-server-1.0.0-SNAPSHOT-runner.jar"]}' \
+  -p "Greet the user World"
+...  
+Starting the AI conversation ...
+The MCP greet server says: **Hello from the MCP server, World!**
+```
+
+- Run instead with a JSON config file
+
+Create a file `mcp-servers.json`:
+
+```json
+[
+  {
+    "type": "stdio",
+    "name": "quarkus-mcp-server",
+    "command": "java",
+    "args": ["-jar", "/path/to/target/quarkus-mcp-server-1.0.0-SNAPSHOT-runner.jar"]
+  }
+]
+```
+
+Then:
+
+```bash
+acp run -a claude-acp \
+  --mcp-server-config mcp-servers.json \
+  -p "Greet the user World"
+```
+
+> The `--mcp-server-config` option accepts inline JSON (string or array) or a path to a JSON file.
+> Supported transport types: `stdio`, `sse`, `http`.
 
 ---
 
-## Test the MCP tools interactively
+## HTTP transport
 
-You can exercise the tools using `curl` against the Streamable HTTP endpoint (`/mcp`).
+### Build
+
+```bash
+mvn package -Phttp
+```
+
+### Run
+
+```bash
+java -jar target/quarkus-app/quarkus-run.jar
+```
+
+The server starts on `http://localhost:8080` and exposes the MCP endpoint at `/mcp`.
+
+### Test
+
+The `http` profile runs unit tests (`CheckToolsTest`) via Maven Surefire.
+The test uses `@QuarkusTest` with `McpStreamableTestClient` to call tools over the Streamable HTTP protocol.
+
+```bash
+mvn test -Phttp
+```
+
+> Integration tests are skipped in this profile. Unit tests are enabled (`skipTests=false`).
+
+### Call a tool with curl (stateless)
 
 The examples below use the **stateless** protocol (`2026-07-28`). Each request is self-contained — no
-`initialize` handshake or session header is needed. The server detects the protocol version automatically.
-
-### Call an MCP tool (stateless)
+`initialize` handshake or session header is needed.
 
 ```bash
 curl -X POST http://localhost:8080/mcp \
@@ -98,85 +209,14 @@ Expected response:
 
 ---
 
-## Run integration tests
-
-The `CheckToolsIT` class launches the über-jar as a child process and tests each tool via the
-MCP stdio protocol.
-
-```bash
-# Build the jar first (required for the IT to find the runner)
-mvn package -DskipTests
-
-# Then run the integration tests (Failsafe integration test phase)
-mvn verify -DskipITs=false
-```
-
-Maven Failsafe runs classes matching `*IT.java` during the `verify` phase.
-`CheckToolsIT` will:
-1. Start `target/quarkus-mcp-server-1.0.0-SNAPSHOT-runner.jar` as a subprocess.
-2. Call `greetHello` and `greetBye` via the MCP stdio protocol.
-3. Assert the response text starts with the expected prefix.
-
----
-
-## Register with an MCP client
-
-### IBM Bob (workspace scope)
-
-**Note**: Replace within the following JSON file the `/path/to/quarkus-mcp-server` with yours !
-
-Add the following to `.bob/mcp.json` in your workspace root, then save — Bob hot-reloads on change:
-
-```json
-{
-  "mcpServers": {
-    "quarkus-mcp-server": {
-      "command": "java",
-      "args": ["-jar", "/path/to/quarkus-mcp-server/target/quarkus-mcp-server-1.0.0-SNAPSHOT-runner.jar"]
-    }
-  }
-}
-```
-
-### Claude Desktop (`claude_desktop_config.json`)
-
-```json
-{
-  "mcpServers": {
-    "quarkus-mcp-server": {
-      "command": "java",
-      "args": ["-jar", "/Users/cmoullia/code/ch007m/my-github-workflow/mcp/servers/quarkus-mcp-server/target/quarkus-mcp-server-1.0.0-SNAPSHOT-runner.jar"]
-    }
-  }
-}
-```
-
-### Generic MCP client (stdio transport)
-
-Any client that supports the MCP stdio transport can launch the server with:
-
-```bash
-java -jar /Users/cmoullia/code/ch007m/my-github-workflow/mcp/servers/quarkus-mcp-server/target/quarkus-mcp-server-1.0.0-SNAPSHOT-runner.jar
-```
-
----
-
-## Available tools
-
-| Tool name | Description | Parameter |
-|-----------|-------------|-----------|
-| `greetHello` | Greet a user with Hello | `name` (string, default: `"Quarkus"`) |
-| `greetBye` | Greet a user with Bye | `name` (string, default: `"Quarkus"`) |
-
----
-
 ## Project structure
 
 ```
 src/
   main/java/org/acme/
-    GreetingTools.java      ← @Tool-annotated methods
+    GreetingTools.java      <- @Tool-annotated methods
   test/java/org/acme/
-    CheckToolsIT.java       ← Integration test (runs über-jar via stdio)
+    CheckToolsIT.java       <- Integration test (stdio: runs uber-jar as subprocess)
+    CheckToolsTest.java     <- Unit test (HTTP: @QuarkusTest with McpStreamableTestClient)
 pom.xml
 ```

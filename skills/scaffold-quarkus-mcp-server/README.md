@@ -36,13 +36,16 @@ When activated, the skill:
 
 ```
 skills/scaffold-quarkus-mcp-server/
-├── SKILL.md                  ← procedural instructions the agent follows
-├── README.md                 ← this file (skill documentation)
+├── SKILL.md                        ← procedural instructions the agent follows
+├── README.md                       ← this file (skill documentation)
 └── reference/
-    ├── GreetingTools.java    ← @Tool template copied into the generated project
-    ├── CheckToolsIT.java     ← integration test template (stdio transport)
-    ├── CheckToolsTest.java   ← @QuarkusTest template (http transport)
-    └── README.md             ← project README template ({{artifactId}} placeholders)
+    ├── GreetingTools.java          ← @Tool template (shared, both transports)
+    ├── stdio/
+    │   ├── README.md               ← project README template (stdio transport)
+    │   └── CheckToolsIT.java       ← Failsafe IT template (launches uber-jar via stdio)
+    └── http/
+        ├── README.md               ← project README template (HTTP transport)
+        └── CheckToolsTest.java     ← @QuarkusTest template (Streamable HTTP)
 ```
 
 ## Usage

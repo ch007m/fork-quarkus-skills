@@ -1,7 +1,7 @@
 package org.acme;
 
 import io.quarkiverse.mcp.server.test.McpAssured;
-import io.quarkiverse.mcp.server.test.McpSseTestClient;
+import io.quarkiverse.mcp.server.test.McpAssured.McpStreamableTestClient;
 import io.quarkus.test.junit.QuarkusTest;
 import org.junit.jupiter.api.Test;
 
@@ -15,7 +15,7 @@ public class CheckToolsTest {
 
     @Test
     public void testToolsCall() {
-        McpSseTestClient client = McpAssured.newConnectedSseClient();
+        McpStreamableTestClient client = McpAssured.newStreamableClient().setStateless().build().connect();
 
         client.when()
                 .toolsCall("greetHello", Map.of("value", "Quarkus"), r -> {
