@@ -26,6 +26,9 @@ Use `ask_followup_question` to collect:
 - **artifactId** — e.g. `my-mcp-server`
 - **version** — default `1.0.0-SNAPSHOT`
 - **Target directory** — where to create the project (default: current workspace root)
+- **Transport** — `stdio` (default) or `http`
+  - `stdio`: the MCP server communicates over standard input/output. Packaged as an uber-jar. Best for CLI-based MCP clients (Claude Desktop, IBM Bob, etc.).
+  - `http`: the MCP server communicates over HTTP/SSE. Packaged as a standard fast-jar. Best for web-based or network MCP clients.
 
 ---
 
@@ -39,9 +42,16 @@ Derive the following from the **Fixed versions** and **Prerequisite** sections a
 - `<quarkus-stream>` — strip the patch from the Quarkus platform version (e.g. `3.40.1` → `3.40`)
 - `<jdk>` — the JDK version from Prerequisites
 
+**If transport is `stdio`:**
 ```bash
 curl -sSL -o /tmp/<artifactId>.zip \
-  "https://code.quarkus.io/api/download?S=io.quarkus.platform:<quarkus-stream>&j=<jdk>&b=MAVEN&nc=true&g=<groupId>&a=<artifactId>&v=<version>&e=io.quarkiverse.mcp:quarkus-mcp-server-http&e=io.quarkiverse.mcp:quarkus-mcp-server-stdio"
+  "https://code.quarkus.io/api/download?S=io.quarkus.platform:<quarkus-stream>&j=<jdk>&b=MAVEN&nc=true&g=<groupId>&a=<artifactId>&v=<version>&e=io.quarkiverse.mcp:quarkus-mcp-server-stdio"
+```
+
+**If transport is `http`:**
+```bash
+curl -sSL -o /tmp/<artifactId>.zip \
+  "https://code.quarkus.io/api/download?S=io.quarkus.platform:<quarkus-stream>&j=<jdk>&b=MAVEN&nc=true&g=<groupId>&a=<artifactId>&v=<version>&e=io.quarkiverse.mcp:quarkus-mcp-server-http"
 ```
 
 Then extract the archive into the target directory:
@@ -53,7 +63,7 @@ unzip -o /tmp/<artifactId>.zip -d <target-directory>
 The generated project already includes:
 - Quarkus BOM (`io.quarkus.platform:quarkus-bom` at the fixed Quarkus platform version)
 - MCP server BOM (managed via the platform)
-- `quarkus-mcp-server-http` and `quarkus-mcp-server-stdio` dependencies
+- The chosen transport dependency (`quarkus-mcp-server-stdio` or `quarkus-mcp-server-http`)
 - `quarkus-junit` (test)
 - Maven wrapper, Dockerfiles, Surefire & Failsafe plugins
 
@@ -63,14 +73,7 @@ The generated project already includes:
 
 Open `pom.xml` and apply the following:
 
-1. **Enable über-jar packaging and enable ITs**:
-   In `<properties>`, ensure:
-   ```xml
-   <quarkus.package.jar.type>uber-jar</quarkus.package.jar.type>
-   <skipITs>false</skipITs>
-   ```
-
-2. **Add MCP test utilities**:
+1. **Add MCP test utilities**:
    In `<dependencies>`, add:
    ```xml
    <dependency>
@@ -79,6 +82,15 @@ Open `pom.xml` and apply the following:
        <scope>test</scope>
    </dependency>
    ```
+
+2. **If transport is `stdio`** — enable über-jar packaging and ITs:
+   In `<properties>`, ensure:
+   ```xml
+   <quarkus.package.jar.type>uber-jar</quarkus.package.jar.type>
+   <skipITs>false</skipITs>
+   ```
+
+3. **If transport is `http`** — no additional properties needed (default fast-jar packaging, ITs skipped).
 
 ---
 
@@ -92,7 +104,9 @@ Use `write_file` to create the file. Do **not** alter the `@Tool` or `@ToolArg` 
 
 ---
 
-## Step 5 — Create the `CheckToolsIT` integration test
+## Step 5 — Create the test class
+
+**If transport is `stdio`:**
 
 Write the file at `src/test/java/<groupId-as-path>/CheckToolsIT.java`.
 Use the reference file at `reference/CheckToolsIT.java` as the exact template —
@@ -101,6 +115,18 @@ replace the package declaration and update the runner jar filename:
 ```java
 .setCommand("java", "-jar", "target/<artifactId>-<version>-runner.jar")
 ```
+
+This is a Failsafe integration test — it launches the über-jar as a subprocess and calls both
+`greetHello` and `greetBye` via the MCP stdio protocol.
+
+**If transport is `http`:**
+
+Write the file at `src/test/java/<groupId-as-path>/CheckToolsTest.java`.
+Use the reference file at `reference/CheckToolsTest.java` as the exact template —
+replace the package declaration to match the actual `groupId`.
+
+This is a `@QuarkusTest` — it starts the Quarkus application and calls both `greetHello` and
+`greetBye` via the MCP SSE endpoint using `McpAssured.newConnectedSseClient()`.
 
 Use `write_file` to create the file.
 
@@ -115,30 +141,42 @@ placeholders with the actual values collected in Step 1. Write the file to the p
 
 ## Step 7 — Build the project
 
+**If transport is `stdio`:**
 ```bash
 cd <artifactId> && mvn package -DskipTests
 ```
-
 Confirm `target/<artifactId>-<version>-runner.jar` exists after the build.
+
+**If transport is `http`:**
+```bash
+cd <artifactId> && mvn package
+```
 
 ---
 
-## Step 8 — Run integration tests
+## Step 8 — Run tests
 
+**If transport is `stdio`:**
 ```bash
 mvn verify
-# Or explicitly if skipITs is true:
-mvn verify -DskipITs=false
 ```
-
 `CheckToolsIT` will launch the über-jar as a subprocess and call both `greetHello` and
 `greetBye` via the MCP stdio protocol.
+
+**If transport is `http`:**
+```bash
+mvn test
+```
+`CheckToolsTest` will start the Quarkus application and call both `greetHello` and
+`greetBye` via the MCP SSE endpoint.
 
 ---
 
 ## Step 9 — Register with an MCP client
 
 Present the user with the registration snippets for their preferred client.
+
+**If transport is `stdio`:**
 
 ### IBM Bob (workspace `.bob/mcp.json`)
 
@@ -171,13 +209,52 @@ Write this to `.bob/mcp.json` (read-then-merge if the file already exists).
 On macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
 On Windows: `%APPDATA%\Claude\claude_desktop_config.json`
 
+**If transport is `http`:**
+
+### SSE endpoint
+
+The MCP server is available at:
+```
+http://localhost:8080/mcp/sse
+```
+
+Start the application first:
+```bash
+cd <artifactId> && mvn quarkus:dev
+```
+
+### IBM Bob (workspace `.bob/mcp.json`)
+
+```json
+{
+  "mcpServers": {
+    "<artifactId>": {
+      "url": "http://localhost:8080/mcp/sse"
+    }
+  }
+}
+```
+
+### Claude Desktop
+
+```json
+{
+  "mcpServers": {
+    "<artifactId>": {
+      "url": "http://localhost:8080/mcp/sse"
+    }
+  }
+}
+```
+
 ---
 
 ## Step 10 — Confirm
 
 Tell the user:
 - The project is ready at `<target-directory>/<artifactId>/`
-- Build command: `mvn package -DskipTests`
-- Integration test command: `mvn verify`
+- Transport: `stdio` or `http`
+- Build command: `mvn package -DskipTests` (stdio) or `mvn package` (http)
+- Test command: `mvn verify` (stdio) or `mvn test` (http)
 - The MCP config has been written / show them the snippet to paste
 - Available tools: `greetHello(name)` and `greetBye(name)`

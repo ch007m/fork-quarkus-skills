@@ -14,8 +14,8 @@
         <quarkus.platform.artifact-id>quarkus-bom</quarkus.platform.artifact-id>
         <quarkus.platform.group-id>io.quarkus.platform</quarkus.platform.group-id>
         <quarkus.platform.version>3.40.1</quarkus.platform.version>
-        <quarkus.package.jar.type>uber-jar</quarkus.package.jar.type>
-        <skipITs>false</skipITs>
+        <skipITs>true</skipITs>
+        <skipTests>true</skipTests>
         <surefire-plugin.version>3.5.6</surefire-plugin.version>
     </properties>
 
@@ -39,14 +39,6 @@
     </dependencyManagement>
 
     <dependencies>
-        <dependency>
-            <groupId>io.quarkiverse.mcp</groupId>
-            <artifactId>quarkus-mcp-server-http</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>io.quarkiverse.mcp</groupId>
-            <artifactId>quarkus-mcp-server-stdio</artifactId>
-        </dependency>
         <dependency>
             <groupId>io.quarkiverse.mcp</groupId>
             <artifactId>quarkus-mcp-server-test</artifactId>
@@ -109,6 +101,36 @@
     </build>
 
     <profiles>
+        <profile>
+            <id>stdio</id>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+            </activation>
+            <properties>
+                <quarkus.package.jar.type>uber-jar</quarkus.package.jar.type>
+                <skipITs>false</skipITs>
+                <skipTests>true</skipTests>
+            </properties>
+            <dependencies>
+                <dependency>
+                    <groupId>io.quarkiverse.mcp</groupId>
+                    <artifactId>quarkus-mcp-server-stdio</artifactId>
+                </dependency>
+            </dependencies>
+        </profile>
+        <profile>
+            <id>http</id>
+            <properties>
+                <skipITs>true</skipITs>
+                <skipTests>false</skipTests>
+            </properties>
+            <dependencies>
+                <dependency>
+                    <groupId>io.quarkiverse.mcp</groupId>
+                    <artifactId>quarkus-mcp-server-http</artifactId>
+                </dependency>
+            </dependencies>
+        </profile>
         <profile>
             <id>native</id>
             <activation>
